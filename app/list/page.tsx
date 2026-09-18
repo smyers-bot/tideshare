@@ -31,7 +31,7 @@ export default function ListPage() {
     name: '', email: '', phone: '',
     title: '', category: '', location: '', price: '',
     description: '', availability: '',
-    fulfillment: 'pickup', deliveryRadius: '', deliveryFee: '',
+    fulfillment: 'pickup', deliveryRadius: '', deliveryFee: '', deposit: '',
   });
   const router = useRouter();
 
@@ -194,6 +194,15 @@ export default function ListPage() {
           </div>
 
           <div>
+            <label style={labelStyle}>Security deposit (optional)</label>
+            <div style={{ position: 'relative' }}>
+              <span style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', fontWeight: 600 }}>$</span>
+              <input style={{ ...inputStyle, paddingLeft: 28 }} type="number" placeholder="100" value={form.deposit} onChange={e => set('deposit', e.target.value)} />
+            </div>
+            <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 5 }}>Collected at booking, returned within 48 hrs if no damage reported.</p>
+          </div>
+
+          <div>
             <label style={labelStyle}>Description (optional)</label>
             <textarea style={{ ...inputStyle, minHeight: 80, resize: 'vertical' }}
               placeholder="Condition, what's included, pickup instructions..."
@@ -255,6 +264,7 @@ export default function ListPage() {
                   owner_phone: form.phone || '',
                   emoji: CATEGORY_EMOJI[form.category] || '📦',
                   is_approved: true,
+                  deposit_amount: form.deposit ? parseFloat(form.deposit) : 0,
                   fulfillment_type: form.fulfillment,
                   delivery_radius: form.fulfillment === 'delivery' ? parseInt(form.deliveryRadius) || 0 : 0,
                   delivery_fee: form.fulfillment === 'delivery' ? parseFloat(form.deliveryFee) || 0 : 0,

@@ -247,6 +247,11 @@ export default function GearDetailPage({ params }: { params: Promise<{ id: strin
                   <p style={{ fontSize: 12, color: 'var(--text-muted)', textAlign: 'center', marginTop: 10 }}>
                     No charge until {listing.owner_name} confirms
                   </p>
+                  {listing.deposit_amount > 0 && (
+                    <p style={{ fontSize: 12, color: 'var(--text-muted)', textAlign: 'center', marginTop: 4 }}>
+                      🔒 ${listing.deposit_amount} refundable deposit · returned within 48 hrs
+                    </p>
+                  )}
                 </>
               )}
 
