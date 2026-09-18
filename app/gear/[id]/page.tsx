@@ -40,6 +40,12 @@ export default function GearDetailPage({ params }: { params: Promise<{ id: strin
   const [form, setForm] = useState({ name: '', email: '', phone: '', startDate: '', endDate: '', message: '' });
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [sending, setSending] = useState(false);
+  const [reviews, setReviews] = useState<any[]>([]);
+  const [reviewForm, setReviewForm] = useState({ rating: 0, comment: '' });
+  const [reviewSending, setReviewSending] = useState(false);
+  const [reviewDone, setReviewDone] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [currentUserName, setCurrentUserName] = useState('');
 
   useEffect(() => {
     if (UUID_RE.test(id)) {
@@ -59,8 +65,17 @@ export default function GearDetailPage({ params }: { params: Promise<{ id: strin
           name: data.user!.user_metadata?.full_name || '',
           email: data.user!.email || '',
         }));
+        setCurrentUserId(data.user.id);
+        setCurrentUserName(data.user.user_metadata?.full_name || data.user.email || 'Anonymous');
       }
     });
+
+    // Fetch reviews for real listings
+    if (UUID_RE.test(id)) {
+      fetch(`/api/reviews?listing_id=${id}`)
+        .then(r => r.json())
+        .then(d => { if (d.reviews) setReviews(d.reviews); });
+    }
   }, [id]);
 
   const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }));
@@ -184,6 +199,101 @@ export default function GearDetailPage({ params }: { params: Promise<{ id: strin
                   ))}
                 </ul>
               </>
+            )}
+
+            {/* Reviews section — real listings only */}
+            {UUID_RE.test(id) && (
+              <div style={{ marginTop: 36 }} id="reviews">
+                <h2 style={{ fontSize: 17, fontWeight: 700, marginBottom: 16 }}>
+                  Reviews {reviews.length > 0 && `(${reviews.length})`}
+                </h2>
+
+                {reviews.length > 0 && (() => {
+                  const avg = reviews.reduce((s, r) => s + r.rating, 0) / reviews.length;
+                  return (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20, padding: '12px 16px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10 }}>
+                      <span style={{ fontSize: 28, fontWeight: 800, color: 'var(--ocean)' }}>{avg.toFixed(1)}</span>
+                      <div>
+                        <div style={{ fontSize: 18, letterSpacing: 2 }}>
+                          {'★'.repeat(Math.round(avg))}{'☆'.repeat(5 - Math.round(avg))}
+                        </div>
+                        <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>{reviews.length} review{reviews.length !== 1 ? 's' : ''}</div>
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 28 }}>
+                  {reviews.map(r => (
+                    <div key={r.id} style={{ padding: '14px 16px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
+                        <div>
+                          <span style={{ fontWeight: 700, fontSize: 14 }}>{r.reviewer_name}</span>
+                          <span style={{ marginLeft: 10, color: '#f59e0b', fontSize: 14 }}>{'★'.repeat(r.rating)}{'☆'.repeat(5 - r.rating)}</span>
+                        </div>
+                        <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                          {new Date(r.created_at).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
+                        </span>
+                      </div>
+                      {r.comment && <p style={{ fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.6, margin: 0 }}>{r.comment}</p>}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Leave a review form */}
+                {currentUserId && !reviewDone && (
+                  <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: 20 }}>
+                    <h3 style={{ fontSize: 15, fontWeight: 700, marginBottom: 14 }}>Leave a review</h3>
+                    <div style={{ display: 'flex', gap: 6, marginBottom: 14 }}>
+                      {[1, 2, 3, 4, 5].map(star => (
+                        <button key={star} onClick={() => setReviewForm(f => ({ ...f, rating: star }))}
+                          style={{ fontSize: 28, background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: star <= reviewForm.rating ? '#f59e0b' : 'var(--border)' }}>
+                          ★
+                        </button>
+                      ))}
+                    </div>
+                    <textarea
+                      style={{ width: '100%', padding: '10px 14px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', fontSize: 14, outline: 'none', fontFamily: 'inherit', resize: 'vertical', minHeight: 70 }}
+                      placeholder="How was your experience? (optional)"
+                      value={reviewForm.comment}
+                      onChange={e => setReviewForm(f => ({ ...f, comment: e.target.value }))}
+                    />
+                    <button
+                      onClick={async () => {
+                        if (!reviewForm.rating) return;
+                        setReviewSending(true);
+                        try {
+                          const res = await fetch('/api/reviews', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ listing_id: id, reviewer_id: currentUserId, reviewer_name: currentUserName, rating: reviewForm.rating, comment: reviewForm.comment }),
+                          });
+                          const data = await res.json();
+                          if (data.error) throw new Error(data.error);
+                          setReviewDone(true);
+                          // Refresh reviews
+                          fetch(`/api/reviews?listing_id=${id}`).then(r => r.json()).then(d => { if (d.reviews) setReviews(d.reviews); });
+                        } catch (err: any) {
+                          alert('Error: ' + err.message);
+                        } finally {
+                          setReviewSending(false);
+                        }
+                      }}
+                      disabled={!reviewForm.rating || reviewSending}
+                      style={{ marginTop: 12, padding: '10px 20px', borderRadius: 8, background: reviewForm.rating ? 'var(--ocean)' : 'var(--border)', color: reviewForm.rating ? '#fff' : 'var(--text-muted)', fontSize: 14, fontWeight: 700, border: 'none', cursor: reviewForm.rating ? 'pointer' : 'not-allowed' }}>
+                      {reviewSending ? 'Submitting...' : 'Submit review'}
+                    </button>
+                  </div>
+                )}
+                {reviewDone && (
+                  <p style={{ fontSize: 14, color: 'var(--ocean)', fontWeight: 600 }}>✓ Thanks for your review!</p>
+                )}
+                {!currentUserId && (
+                  <p style={{ fontSize: 14, color: 'var(--text-muted)' }}>
+                    <a href="/auth/signin" style={{ color: 'var(--ocean)', fontWeight: 600, textDecoration: 'none' }}>Sign in</a> to leave a review.
+                  </p>
+                )}
+              </div>
             )}
           </div>
 
@@ -323,7 +433,7 @@ export default function GearDetailPage({ params }: { params: Promise<{ id: strin
                         const res = await fetch('/api/checkout', {
                           method: 'POST',
                           headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({ gearTitle: listing.title, price: listing.price, days, renterEmail: form.email, stripeAccountId: listing.stripe_account_id || '', deliveryFee }),
+                          body: JSON.stringify({ gearTitle: listing.title, price: listing.price, days, renterEmail: form.email, stripeAccountId: listing.stripe_account_id || '', deliveryFee, listingId: UUID_RE.test(id) ? id : '' }),
                         });
                         const data = await res.json();
                         if (data.error) throw new Error(data.error);

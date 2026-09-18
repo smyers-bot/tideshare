@@ -5,7 +5,7 @@ export async function POST(req: NextRequest) {
   const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
   try {
     const body = await req.json();
-    const { gearTitle, price, days, renterEmail, stripeAccountId, deliveryFee = 0 } = body;
+    const { gearTitle, price, days, renterEmail, stripeAccountId, deliveryFee = 0, listingId = '' } = body;
 
     const baseAmount = Math.round(price * days * 100);
     const total = Math.round(price * days * 1.15 * 100) + Math.round(deliveryFee * 100);
@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
         },
       ],
       mode: 'payment',
-      success_url: `${origin}/booking-success`,
+      success_url: `${origin}/booking-success${listingId ? `?listing_id=${listingId}` : ''}`,
       cancel_url: `${origin}/browse`,
     };
 
