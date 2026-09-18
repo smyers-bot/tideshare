@@ -5,29 +5,45 @@ export async function POST(req: NextRequest) {
   const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
   try {
     const body = await req.json();
-    const { gearTitle, price, days, renterEmail, stripeAccountId, deliveryFee = 0, listingId = '' } = body;
+    const { gearTitle, price, days, renterEmail, stripeAccountId, deliveryFee = 0, listingId = '', depositAmount = 0, bookingId = '' } = body;
 
-    const baseAmount = Math.round(price * days * 100);
-    const total = Math.round(price * days * 1.15 * 100) + Math.round(deliveryFee * 100);
+    const rentalTotal = Math.round(price * days * 1.15 * 100) + Math.round(deliveryFee * 100);
+    const depositCents = Math.round(depositAmount * 100);
     const ownerAmount = Math.round(price * days * 0.85 * 100) + Math.round(deliveryFee * 100);
     const origin = req.headers.get('origin') || 'https://tideshare.app';
+
+    const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = [
+      {
+        price_data: {
+          currency: 'usd',
+          product_data: {
+            name: gearTitle,
+            description: `${days} day${days !== 1 ? 's' : ''} rental`,
+          },
+          unit_amount: rentalTotal,
+        },
+        quantity: 1,
+      },
+    ];
+
+    if (depositCents > 0) {
+      lineItems.push({
+        price_data: {
+          currency: 'usd',
+          product_data: {
+            name: 'Security deposit (fully refundable)',
+            description: 'Returned within 48 hrs after gear is returned undamaged',
+          },
+          unit_amount: depositCents,
+        },
+        quantity: 1,
+      });
+    }
 
     const sessionParams: Stripe.Checkout.SessionCreateParams = {
       payment_method_types: ['card'],
       customer_email: renterEmail,
-      line_items: [
-        {
-          price_data: {
-            currency: 'usd',
-            product_data: {
-              name: gearTitle,
-              description: `${days} day${days !== 1 ? 's' : ''} rental · Pickup from owner`,
-            },
-            unit_amount: total,
-          },
-          quantity: 1,
-        },
-      ],
+      line_items: lineItems,
       mode: 'payment',
       success_url: `${origin}/booking-success${listingId ? `?listing_id=${listingId}` : ''}`,
       cancel_url: `${origin}/browse`,
@@ -43,6 +59,18 @@ export async function POST(req: NextRequest) {
     }
 
     const session = await stripe.checkout.sessions.create(sessionParams);
+
+    // Store session ID and deposit info on the booking
+    if (bookingId) {
+      const { createClient } = await import('@/app/lib/supabase/server');
+      const supabase = await createClient();
+      await supabase.from('bookings').update({
+        stripe_session_id: session.id,
+        deposit_amount: depositAmount,
+        deposit_status: depositCents > 0 ? 'held' : 'none',
+      }).eq('id', bookingId);
+    }
+
     return NextResponse.json({ url: session.url });
   } catch (err: any) {
     console.error('Stripe error:', err);

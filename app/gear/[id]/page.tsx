@@ -406,9 +406,10 @@ export default function GearDetailPage({ params }: { params: Promise<{ id: strin
                       setSending(true);
                       try {
                         // Save booking to Supabase (for real DB listings only)
+                        let bookingId = '';
                         if (UUID_RE.test(id)) {
                           const supabase = createClient();
-                          await supabase.from('bookings').insert({
+                          const { data: bData } = await supabase.from('bookings').insert({
                             listing_id: id,
                             renter_name: form.name,
                             renter_email: form.email,
@@ -419,7 +420,8 @@ export default function GearDetailPage({ params }: { params: Promise<{ id: strin
                             total_price: grandTotal,
                             message: form.message || '',
                             status: 'pending_payment',
-                          });
+                          }).select('id').single();
+                          bookingId = bData?.id || '';
                         }
 
                         await emailjs.send(EMAILJS_SERVICE, EMAILJS_BOOKING_TEMPLATE, {
@@ -433,7 +435,7 @@ export default function GearDetailPage({ params }: { params: Promise<{ id: strin
                         const res = await fetch('/api/checkout', {
                           method: 'POST',
                           headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({ gearTitle: listing.title, price: listing.price, days, renterEmail: form.email, stripeAccountId: listing.stripe_account_id || '', deliveryFee, listingId: UUID_RE.test(id) ? id : '' }),
+                          body: JSON.stringify({ gearTitle: listing.title, price: listing.price, days, renterEmail: form.email, stripeAccountId: listing.stripe_account_id || '', deliveryFee, listingId: UUID_RE.test(id) ? id : '', depositAmount: listing.deposit_amount || 0, bookingId }),
                         });
                         const data = await res.json();
                         if (data.error) throw new Error(data.error);
