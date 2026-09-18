@@ -1,17 +1,71 @@
 'use client';
 import Link from 'next/link';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import emailjs from '@emailjs/browser';
+import { createClient } from '@/app/lib/supabase/client';
+import NavBar from '@/app/components/NavBar';
 
-const CATEGORIES = ['Surfboards', 'Golf Carts', 'Golf Clubs', 'Kayaks', 'Beach Chairs', 'Paddleboards', 'Bikes', 'Camping Gear', 'Snorkel Gear', 'Other'];
+const EMAILJS_SERVICE = 'service_ssteci9';
+const EMAILJS_TEMPLATE = 'template_9ylzhsa';
+const EMAILJS_PUBLIC_KEY = 'mYya3x3YoyhvwzvYR';
+const CLOUDINARY_CLOUD = 'bf4ll8ab';
+const CLOUDINARY_PRESET = 'wnkj6w7s';
+
+const CATEGORIES = ['Surfboards', 'Golf Clubs', 'Kayaks', 'Beach Chairs', 'Paddleboards', 'Bikes', 'Fishing Gear', 'Camping Gear', 'Bundles', 'Other'];
 const LOCATIONS = ['Folly Beach', 'Isle of Palms', "Sullivan's Island", 'Kiawah Island', 'Wild Dunes', 'James Island', 'Mount Pleasant', 'Downtown Charleston'];
+const CATEGORY_EMOJI: Record<string, string> = {
+  Surfboards: '🏄', Kayaks: '🚣', Paddleboards: '🏄‍♀️', 'Golf Clubs': '⛳',
+  'Beach Chairs': '🏖️', Bikes: '🚲', 'Fishing Gear': '🎣', 'Camping Gear': '⛺',
+  Bundles: '🎉', Other: '📦',
+};
 
 export default function ListPage() {
   const [submitted, setSubmitted] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [userEmail, setUserEmail] = useState('');
   const [form, setForm] = useState({
     name: '', email: '', phone: '',
     title: '', category: '', location: '', price: '',
     description: '', availability: '',
+    fulfillment: 'pickup', deliveryRadius: '', deliveryFee: '',
   });
+  const router = useRouter();
+
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getUser().then(({ data }) => {
+      if (!data.user) { router.push('/auth/signin?next=/list'); return; }
+      const name = data.user.user_metadata?.full_name || '';
+      const email = data.user.email || '';
+      setUserEmail(email);
+      setForm(f => ({ ...f, name, email }));
+    });
+  }, []);
+
+  const handlePhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setPhotoFile(file);
+    setPhotoPreview(URL.createObjectURL(file));
+  };
+
+  const uploadPhoto = async (): Promise<string | null> => {
+    if (!photoFile) return null;
+    const data = new FormData();
+    data.append('file', photoFile);
+    data.append('upload_preset', CLOUDINARY_PRESET);
+    try {
+      const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/image/upload`, { method: 'POST', body: data });
+      const json = await res.json();
+      return json.secure_url || null;
+    } catch {
+      return null;
+    }
+  };
 
   const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }));
 
@@ -32,12 +86,12 @@ export default function ListPage() {
       <div style={{ minHeight: '100vh', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
         <div style={{ textAlign: 'center', maxWidth: 480 }}>
           <div style={{ fontSize: 64, marginBottom: 24 }}>🎉</div>
-          <h1 style={{ fontSize: 28, fontWeight: 800, marginBottom: 12 }}>You're on the list!</h1>
+          <h1 style={{ fontSize: 28, fontWeight: 800, marginBottom: 12 }}>Listing submitted!</h1>
           <p style={{ fontSize: 16, color: 'var(--text-muted)', lineHeight: 1.7, marginBottom: 28 }}>
-            We'll reach out to {form.email} within 24 hours to get your listing live. In the meantime, spread the word — the more locals who list, the better for everyone.
+            Your listing is under review and will go live shortly. You can track it from your dashboard.
           </p>
-          <Link href="/" style={{ background: 'var(--ocean)', color: '#fff', padding: '12px 28px', borderRadius: 8, fontSize: 15, fontWeight: 700, textDecoration: 'none', display: 'inline-block' }}>
-            Back to home
+          <Link href="/dashboard" style={{ background: 'var(--ocean)', color: '#fff', padding: '12px 28px', borderRadius: 8, fontSize: 15, fontWeight: 700, textDecoration: 'none', display: 'inline-block' }}>
+            Go to dashboard →
           </Link>
         </div>
       </div>
@@ -46,31 +100,22 @@ export default function ListPage() {
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg)' }}>
-      {/* Nav */}
-      <nav style={{ background: 'var(--surface)', borderBottom: '1px solid var(--border)' }}>
-        <div style={{ maxWidth: 1100, margin: '0 auto', padding: '0 24px', height: 60, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <Link href="/" style={{ fontSize: 22, fontWeight: 800, color: 'var(--ocean)', letterSpacing: '-0.5px', textDecoration: 'none' }}>
-            tide<span style={{ color: 'var(--sand)' }}>share</span>
-          </Link>
-        </div>
-      </nav>
+      <NavBar />
 
       <div style={{ maxWidth: 560, margin: '0 auto', padding: '48px 24px' }}>
 
-        {/* Earn callout */}
         <div style={{ background: 'var(--ocean-light)', border: '1px solid var(--ocean)', borderRadius: 12, padding: 20, marginBottom: 36, display: 'flex', gap: 16, alignItems: 'flex-start' }}>
           <span style={{ fontSize: 32 }}>💰</span>
           <div>
             <p style={{ fontWeight: 700, color: 'var(--ocean)', marginBottom: 4 }}>Earn $200–$600/weekend</p>
             <p style={{ fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.6 }}>
-              Charleston gets 7M+ tourists a year. Your gear can pay for itself in one summer.
-              Listing is free — TideShare takes 15% only when you earn.
+              Charleston gets 7M+ tourists a year. Listing is free — TideShare takes 15% only when you earn.
             </p>
           </div>
         </div>
 
         <h1 style={{ fontSize: 28, fontWeight: 800, marginBottom: 8, letterSpacing: '-0.3px' }}>List your gear</h1>
-        <p style={{ color: 'var(--text-muted)', marginBottom: 32, fontSize: 15 }}>Takes 5 minutes. We'll review and get it live within 24 hours.</p>
+        <p style={{ color: 'var(--text-muted)', marginBottom: 32, fontSize: 15 }}>Takes 5 minutes. Your listing goes live after a quick review.</p>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
 
@@ -113,6 +158,34 @@ export default function ListPage() {
           </div>
 
           <div>
+            <label style={labelStyle}>How will renters get the gear?</label>
+            <div style={{ display: 'flex', gap: 10 }}>
+              {[{ val: 'pickup', label: '📍 Pickup only', desc: 'Renter comes to you' }, { val: 'delivery', label: '🚗 Delivery available', desc: 'You can bring it to them' }].map(opt => (
+                <div key={opt.val} onClick={() => set('fulfillment', opt.val)}
+                  style={{ flex: 1, padding: '12px 14px', borderRadius: 8, border: `2px solid ${form.fulfillment === opt.val ? 'var(--ocean)' : 'var(--border)'}`, background: form.fulfillment === opt.val ? 'var(--ocean-light)' : 'var(--surface)', cursor: 'pointer' }}>
+                  <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 2 }}>{opt.label}</div>
+                  <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{opt.desc}</div>
+                </div>
+              ))}
+            </div>
+            {form.fulfillment === 'delivery' && (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 12 }}>
+                <div>
+                  <label style={labelStyle}>Max delivery radius (miles)</label>
+                  <input style={inputStyle} type="number" placeholder="10" value={form.deliveryRadius} onChange={e => set('deliveryRadius', e.target.value)} />
+                </div>
+                <div>
+                  <label style={labelStyle}>Delivery fee</label>
+                  <div style={{ position: 'relative' }}>
+                    <span style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', fontWeight: 600 }}>$</span>
+                    <input style={{ ...inputStyle, paddingLeft: 28 }} type="number" placeholder="20" value={form.deliveryFee} onChange={e => set('deliveryFee', e.target.value)} />
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div>
             <label style={labelStyle}>Daily price (you keep 85%)</label>
             <div style={{ position: 'relative' }}>
               <span style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', fontWeight: 600 }}>$</span>
@@ -132,9 +205,79 @@ export default function ListPage() {
             <input style={inputStyle} placeholder="Weekends only, or most days May–Sept" value={form.availability} onChange={e => set('availability', e.target.value)} />
           </div>
 
-          <button onClick={() => setSubmitted(true)} disabled={!canSubmit}
+          <div>
+            <label style={labelStyle}>Photo of your gear (optional but recommended)</label>
+            <div style={{ border: '2px dashed var(--border)', borderRadius: 10, padding: 20, textAlign: 'center', cursor: 'pointer', background: 'var(--surface)', position: 'relative' }}
+              onClick={() => document.getElementById('photo-upload')?.click()}>
+              {photoPreview ? (
+                <img src={photoPreview} alt="Preview" style={{ maxHeight: 200, maxWidth: '100%', borderRadius: 8, objectFit: 'cover' }} />
+              ) : (
+                <>
+                  <div style={{ fontSize: 32, marginBottom: 8 }}>📷</div>
+                  <p style={{ fontSize: 14, color: 'var(--text-muted)', margin: 0 }}>Click to upload a photo</p>
+                  <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '4px 0 0' }}>JPG or PNG, max 10MB</p>
+                </>
+              )}
+              <input id="photo-upload" type="file" accept="image/*" onChange={handlePhoto} style={{ display: 'none' }} />
+            </div>
+            {photoPreview && (
+              <button onClick={() => { setPhotoFile(null); setPhotoPreview(null); }}
+                style={{ marginTop: 8, fontSize: 13, color: 'var(--text-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+                Remove photo
+              </button>
+            )}
+          </div>
+
+          <button
+            onClick={async () => {
+              if (!canSubmit) return;
+              setSending(true);
+              try {
+                setUploading(true);
+                const photoUrl = await uploadPhoto();
+                setUploading(false);
+
+                const supabase = createClient();
+                const { data: { user } } = await supabase.auth.getUser();
+                if (!user) { router.push('/auth/signin?next=/list'); return; }
+
+                const { error: dbError } = await supabase.from('listings').insert({
+                  user_id: user.id,
+                  title: form.title,
+                  category: form.category,
+                  location: form.location,
+                  price: parseFloat(form.price),
+                  description: form.description || '',
+                  availability: form.availability || '',
+                  photo_url: photoUrl || '',
+                  owner_name: form.name,
+                  owner_email: form.email,
+                  owner_phone: form.phone || '',
+                  emoji: CATEGORY_EMOJI[form.category] || '📦',
+                  is_approved: true,
+                  fulfillment_type: form.fulfillment,
+                  delivery_radius: form.fulfillment === 'delivery' ? parseInt(form.deliveryRadius) || 0 : 0,
+                  delivery_fee: form.fulfillment === 'delivery' ? parseFloat(form.deliveryFee) || 0 : 0,
+                });
+                if (dbError) throw new Error(dbError.message);
+
+                await emailjs.send(EMAILJS_SERVICE, EMAILJS_TEMPLATE, {
+                  name: form.name, email: form.email, phone: form.phone || 'Not provided',
+                  title: form.title, category: form.category, location: form.location,
+                  price: form.price, availability: form.availability || 'Not specified',
+                  description: form.description || 'None', photo_url: photoUrl || 'No photo uploaded',
+                }, EMAILJS_PUBLIC_KEY);
+
+                setSubmitted(true);
+              } catch (err: any) {
+                alert('Error: ' + (err?.message || JSON.stringify(err)));
+              } finally {
+                setSending(false);
+              }
+            }}
+            disabled={!canSubmit || sending}
             style={{ padding: '14px', borderRadius: 8, background: canSubmit ? 'var(--ocean)' : 'var(--border)', color: canSubmit ? '#fff' : 'var(--text-muted)', fontSize: 15, fontWeight: 700, border: 'none', cursor: canSubmit ? 'pointer' : 'not-allowed', marginTop: 8 }}>
-            Submit listing →
+            {uploading ? 'Uploading photo...' : sending ? 'Submitting...' : 'Submit listing →'}
           </button>
 
           <p style={{ fontSize: 13, color: 'var(--text-muted)', textAlign: 'center' }}>
