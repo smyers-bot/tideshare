@@ -5,6 +5,7 @@ import { use } from 'react';
 import emailjs from '@emailjs/browser';
 import { createClient } from '@/app/lib/supabase/client';
 import NavBar from '@/app/components/NavBar';
+import { track } from '@vercel/analytics';
 
 const EMAILJS_SERVICE = 'service_ssteci9';
 const EMAILJS_BOOKING_TEMPLATE = 'template_2m74q94';
@@ -51,7 +52,11 @@ export default function GearDetailPage({ params }: { params: Promise<{ id: strin
     if (UUID_RE.test(id)) {
       const supabase = createClient();
       supabase.from('listings').select('*').eq('id', id).single()
-        .then(({ data }) => { setListing(data || null); setLoading(false); });
+        .then(({ data }) => {
+          setListing(data || null);
+          setLoading(false);
+          if (data) track('listing_viewed', { title: data.title, category: data.category, location: data.location });
+        });
     } else {
       setListing(HARDCODED[id] || null);
       setLoading(false);
@@ -349,7 +354,7 @@ export default function GearDetailPage({ params }: { params: Promise<{ id: strin
                   )}
 
                   <button
-                    onClick={() => available && setStep('book')}
+                    onClick={() => { if (available) { setStep('book'); track('booking_started', { title: listing.title, price: listing.price, location: listing.location }); } }}
                     disabled={!available}
                     style={{ width: '100%', padding: '14px', borderRadius: 8, background: available ? 'var(--ocean)' : 'var(--border)', color: available ? '#fff' : 'var(--text-muted)', fontSize: 15, fontWeight: 700, border: 'none', cursor: available ? 'pointer' : 'not-allowed' }}>
                     {available ? 'Request to book' : 'Currently unavailable'}
@@ -432,6 +437,7 @@ export default function GearDetailPage({ params }: { params: Promise<{ id: strin
                           message: form.message || 'No message provided',
                         }, EMAILJS_PUBLIC_KEY);
 
+                        track('checkout_started', { title: listing.title, price: listing.price, days, total: grandTotal });
                         const res = await fetch('/api/checkout', {
                           method: 'POST',
                           headers: { 'Content-Type': 'application/json' },

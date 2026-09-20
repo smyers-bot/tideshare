@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import emailjs from '@emailjs/browser';
 import { createClient } from '@/app/lib/supabase/client';
 import NavBar from '@/app/components/NavBar';
+import { track } from '@vercel/analytics';
 
 const EMAILJS_SERVICE = 'service_ssteci9';
 const EMAILJS_TEMPLATE = 'template_9ylzhsa';
@@ -278,6 +279,7 @@ export default function ListPage() {
                   description: form.description || 'None', photo_url: photoUrl || 'No photo uploaded',
                 }, EMAILJS_PUBLIC_KEY);
 
+                track('listing_submitted', { category: form.category, location: form.location, price: parseFloat(form.price), fulfillment: form.fulfillment });
                 setSubmitted(true);
               } catch (err: any) {
                 alert('Error: ' + (err?.message || JSON.stringify(err)));
