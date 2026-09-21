@@ -1,45 +1,40 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
+import NavBar from '@/app/components/NavBar';
+
+export const metadata: Metadata = {
+  title: 'TideShare — Rent Beach & Outdoor Gear in Charleston SC',
+  description: 'Rent surfboards, kayaks, paddleboards, bikes, golf clubs and beach chairs from locals in Charleston, Isle of Palms, Folly Beach, Kiawah Island and Sullivan\'s Island. Better prices than shops.',
+};
 
 const CATEGORIES = [
+  { emoji: '🎉', label: 'Bundles' },
   { emoji: '🏄', label: 'Surfboards' },
-  { emoji: '🛻', label: 'Golf Carts' },
+  { emoji: '⛺', label: 'Camping Gear' },
   { emoji: '⛳', label: 'Golf Clubs' },
   { emoji: '🚣', label: 'Kayaks' },
   { emoji: '🏖️', label: 'Beach Chairs' },
   { emoji: '🏄‍♀️', label: 'Paddleboards' },
   { emoji: '🚲', label: 'Bikes' },
-  { emoji: '🤿', label: 'Snorkel Gear' },
+  { emoji: '🎣', label: 'Fishing Gear' },
 ];
 
 const SAMPLE_LISTINGS = [
   { id: 1, title: 'Soft-top Surfboard', owner: 'Jake', location: 'Folly Beach', price: 45, emoji: '🏄', rating: 4.9, reviews: 23, tag: 'Most popular' },
-  { id: 2, title: 'Street-legal Golf Cart', owner: 'Mary', location: "Isle of Palms", price: 120, emoji: '🛻', rating: 5.0, reviews: 11, tag: 'Top rated' },
+  { id: 2, title: 'Tandem Paddleboard Set', owner: 'Mary', location: "Isle of Palms", price: 75, emoji: '🏄‍♀️', rating: 5.0, reviews: 11, tag: 'Top rated' },
   { id: 3, title: 'Tandem Kayak', owner: 'Chris', location: "Sullivan's Island", price: 65, emoji: '🚣', rating: 4.8, reviews: 17, tag: null },
   { id: 4, title: 'Beach Chair + Umbrella Set', owner: 'Dana', location: 'Folly Beach', price: 25, emoji: '🏖️', rating: 4.7, reviews: 31, tag: null },
   { id: 5, title: 'Paddleboard (11ft)', owner: 'Sam', location: 'Isle of Palms', price: 55, emoji: '🏄‍♀️', rating: 4.9, reviews: 8, tag: null },
   { id: 6, title: 'Beach Cruiser Bikes (2)', owner: 'Tara', location: 'Folly Beach', price: 35, emoji: '🚲', rating: 4.6, reviews: 19, tag: null },
   { id: 7, title: 'Full Golf Club Set (RH)', owner: 'Brett', location: 'Kiawah Island', price: 60, emoji: '⛳', rating: 5.0, reviews: 9, tag: 'New' },
-  { id: 8, title: 'Ladies Golf Club Set', owner: 'Anne', location: 'Wild Dunes', price: 50, emoji: '⛳', rating: 4.8, reviews: 5, tag: null },
+  { id: 13, title: 'Beach Day Bundle', owner: 'Dana', location: 'Folly Beach', price: 45, emoji: '🎉', rating: 4.9, reviews: 14, tag: 'Bundle' },
 ];
 
 export default function Home() {
   return (
     <main style={{ background: 'var(--bg)', minHeight: '100vh' }}>
 
-      {/* Nav */}
-      <nav style={{ background: 'var(--surface)', borderBottom: '1px solid var(--border)', position: 'sticky', top: 0, zIndex: 50 }}>
-        <div style={{ maxWidth: 1100, margin: '0 auto', padding: '0 24px', height: 60, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <span style={{ fontSize: 22, fontWeight: 800, color: 'var(--ocean)', letterSpacing: '-0.5px' }}>
-            tide<span style={{ color: 'var(--sand)' }}>share</span>
-          </span>
-          <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-            <Link href="/browse" style={{ fontSize: 14, color: 'var(--text-muted)', textDecoration: 'none', fontWeight: 500 }}>Browse gear</Link>
-            <Link href="/list" style={{ background: 'var(--ocean)', color: '#fff', padding: '8px 18px', borderRadius: 8, fontSize: 14, fontWeight: 600, textDecoration: 'none' }}>
-              List your gear
-            </Link>
-          </div>
-        </div>
-      </nav>
+      <NavBar />
 
       {/* Hero */}
       <section style={{ background: 'linear-gradient(160deg, #0077B6 0%, #0096C7 50%, #00B4D8 100%)', padding: '72px 24px 80px', textAlign: 'center', color: '#fff' }}>
@@ -51,7 +46,7 @@ export default function Home() {
             Beach gear from<br />your neighbors.
           </h1>
           <p style={{ fontSize: 19, lineHeight: 1.6, opacity: 0.9, marginBottom: 36, maxWidth: 480, margin: '0 auto 36px' }}>
-            Rent surfboards, golf clubs, golf carts, kayaks, and more directly from Charleston locals. Better prices, real people, no shop lines.
+            Rent surfboards, golf clubs, kayaks, paddleboards, and more directly from Charleston locals. Better prices, real people, no shop lines.
           </p>
           <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
             <Link href="/browse" style={{ background: '#fff', color: 'var(--ocean)', padding: '14px 28px', borderRadius: 8, fontSize: 15, fontWeight: 700, textDecoration: 'none' }}>
@@ -124,7 +119,7 @@ export default function Home() {
           <h2 style={{ fontSize: 28, fontWeight: 700, textAlign: 'center', marginBottom: 48, letterSpacing: '-0.3px' }}>How TideShare works</h2>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 40 }}>
             {[
-              { icon: '🔍', title: 'Find gear nearby', body: 'Browse surfboards, golf carts, kayaks and more listed by Charleston locals — pick your beach and your dates.' },
+              { icon: '🔍', title: 'Find gear nearby', body: 'Browse surfboards, kayaks, paddleboards, golf clubs and more listed by Charleston locals — pick your beach and your dates.' },
               { icon: '📲', title: 'Book instantly', body: 'Request the gear, the owner confirms, and you pay securely through the app. No shop, no waiting.' },
               { icon: '🤝', title: 'Meet your neighbor', body: 'Pick up the gear locally, enjoy your day, and return it when you\'re done. Simple as borrowing from a friend.' },
             ].map(s => (
@@ -155,8 +150,12 @@ export default function Home() {
 
       {/* Footer */}
       <footer style={{ borderTop: '1px solid var(--border)', padding: '24px', textAlign: 'center' }}>
-        <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>
+        <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 8 }}>
           © 2026 TideShare · Made in Charleston, SC 🌊
+        </p>
+        <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>
+          <Link href="/terms" style={{ color: 'var(--text-muted)', textDecoration: 'none', marginRight: 16 }}>Terms of Service</Link>
+          <Link href="/privacy" style={{ color: 'var(--text-muted)', textDecoration: 'none' }}>Privacy Policy</Link>
         </p>
       </footer>
     </main>

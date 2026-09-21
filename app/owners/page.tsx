@@ -1,5 +1,11 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import NavBar from '@/app/components/NavBar';
+
+export const metadata: Metadata = {
+  title: 'List Your Gear & Earn | TideShare Charleston',
+  description: 'Turn idle beach gear into income. List your surfboard, kayak, paddleboard, golf clubs or bikes on TideShare and earn $200–$600/weekend renting to Charleston visitors. Free to list — 15% fee only when you earn.',
+};
 
 const GEAR_EXAMPLES = [
   { emoji: '🏄', item: 'Surfboard', earn: '$45/day', weekend: '$270' },
