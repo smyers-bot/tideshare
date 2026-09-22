@@ -8,66 +8,50 @@ export async function POST(req: NextRequest) {
     const { gearTitle, price, days, renterEmail, stripeAccountId, deliveryFee = 0, listingId = '', depositAmount = 0, bookingId = '' } = body;
 
     const rentalTotal = Math.round(price * days * 1.15 * 100) + Math.round(deliveryFee * 100);
-    const depositCents = Math.round(depositAmount * 100);
     const ownerAmount = Math.round(price * days * 0.85 * 100) + Math.round(deliveryFee * 100);
     const origin = req.headers.get('origin') || 'https://tideshare.app';
 
-    const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = [
-      {
-        price_data: {
-          currency: 'usd',
-          product_data: {
-            name: gearTitle,
-            description: `${days} day${days !== 1 ? 's' : ''} rental`,
-          },
-          unit_amount: rentalTotal,
-        },
-        quantity: 1,
-      },
-    ];
-
-    if (depositCents > 0) {
-      lineItems.push({
-        price_data: {
-          currency: 'usd',
-          product_data: {
-            name: 'Security deposit (fully refundable)',
-            description: 'Returned within 48 hrs after gear is returned undamaged',
-          },
-          unit_amount: depositCents,
-        },
-        quantity: 1,
-      });
-    }
+    const successParams = new URLSearchParams();
+    if (listingId) successParams.set('listing_id', listingId);
+    if (bookingId) successParams.set('booking_id', bookingId);
+    const successUrl = `${origin}/booking-success?${successParams.toString()}`;
 
     const sessionParams: Stripe.Checkout.SessionCreateParams = {
       payment_method_types: ['card'],
       customer_email: renterEmail,
-      line_items: lineItems,
+      line_items: [
+        {
+          price_data: {
+            currency: 'usd',
+            product_data: {
+              name: gearTitle,
+              description: `${days} day${days !== 1 ? 's' : ''} rental`,
+            },
+            unit_amount: rentalTotal,
+          },
+          quantity: 1,
+        },
+      ],
       mode: 'payment',
-      success_url: `${origin}/booking-success${listingId ? `?listing_id=${listingId}` : ''}`,
+      success_url: successUrl,
       cancel_url: `${origin}/browse`,
     };
 
     if (stripeAccountId) {
       sessionParams.payment_intent_data = {
-        transfer_data: {
-          destination: stripeAccountId,
-          amount: ownerAmount,
-        },
+        transfer_data: { destination: stripeAccountId, amount: ownerAmount },
       };
     }
 
     const session = await stripe.checkout.sessions.create(sessionParams);
 
-    // Store session ID and deposit info on the booking
     if (bookingId) {
       const { createClient } = await import('@/app/lib/supabase/server');
       const supabase = await createClient();
       await supabase.from('bookings').update({
         stripe_session_id: session.id,
         deposit_amount: depositAmount,
-        deposit_status: depositCents > 0 ? 'held' : 'none',
+        deposit_status: depositAmount > 0 ? 'pending_auth' : 'none',
       }).eq('id', bookingId);
     }
 

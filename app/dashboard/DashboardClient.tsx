@@ -262,9 +262,9 @@ export default function DashboardClient({ user, listings: initialListings, booki
                     <span style={{ fontSize: 13, fontWeight: 600 }}>
                       🔒 ${booking.deposit_amount} deposit
                     </span>
-                    {booking.deposit_status === 'held' && (
+                    {(booking.deposit_status === 'authorized' || booking.deposit_status === 'held') && (
                       <>
-                        <span style={{ fontSize: 12, color: '#92400E', background: '#FEF3C7', padding: '2px 8px', borderRadius: 8, fontWeight: 700 }}>HELD</span>
+                        <span style={{ fontSize: 12, color: '#92400E', background: '#FEF3C7', padding: '2px 8px', borderRadius: 8, fontWeight: 700 }}>AUTH HOLD</span>
                         <button
                           onClick={() => handleDeposit(booking.id, 'release')}
                           disabled={depositAction !== null}

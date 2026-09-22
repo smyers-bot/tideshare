@@ -42,7 +42,7 @@ const HOW_IT_WORKS = [
 const FAQS = [
   {
     q: 'What if something gets damaged?',
-    a: 'Renters agree to our Terms of Service before booking, which holds them liable for damage beyond normal wear and tear. We recommend setting a cash damage deposit in your listing description — collect it at pickup before handing over the gear. For expensive items, a $50–200 deposit is standard.',
+    a: 'Renters agree to our Terms of Service before booking, which holds them liable for damage beyond normal wear and tear. You can set a security deposit when you list your gear — TideShare places an authorization hold on the renter\'s card at booking. If gear comes back damaged, claim the deposit from your dashboard. If everything\'s fine, release it and the hold is voided.',
   },
   {
     q: 'How do I get paid?',

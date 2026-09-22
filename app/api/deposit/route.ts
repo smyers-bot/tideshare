@@ -12,49 +12,49 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
     }
 
-    // Verify caller owns the listing
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    // Get booking with listing info
-    const { data: booking, error: bookingError } = await supabase
+    const { data: booking } = await supabase
       .from('bookings')
       .select('*, listing:listings(user_id, stripe_account_id)')
       .eq('id', bookingId)
       .single();
 
-    if (bookingError || !booking) return NextResponse.json({ error: 'Booking not found' }, { status: 404 });
+    if (!booking) return NextResponse.json({ error: 'Booking not found' }, { status: 404 });
     if (booking.listing?.user_id !== user.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
-    if (booking.deposit_status !== 'held') return NextResponse.json({ error: 'Deposit not in held state' }, { status: 400 });
+    if (booking.deposit_status !== 'authorized') {
+      return NextResponse.json({ error: 'Deposit is not in an authorized state' }, { status: 400 });
+    }
+
+    const depositPiId = booking.deposit_payment_intent_id;
+    if (!depositPiId) {
+      return NextResponse.json({ error: 'No deposit authorization found for this booking' }, { status: 400 });
+    }
 
     const depositCents = Math.round((booking.deposit_amount || 0) * 100);
-    if (depositCents === 0) return NextResponse.json({ error: 'No deposit on this booking' }, { status: 400 });
-
-    // Get payment intent from Stripe session
-    const session = await stripe.checkout.sessions.retrieve(booking.stripe_session_id);
-    const paymentIntentId = session.payment_intent as string;
 
     if (action === 'release') {
-      // Refund deposit back to renter
-      await stripe.refunds.create({
-        payment_intent: paymentIntentId,
-        amount: depositCents,
-      });
+      // Void the authorization hold — renter never sees a charge
+      await stripe.paymentIntents.cancel(depositPiId);
       await supabase.from('bookings').update({ deposit_status: 'released' }).eq('id', bookingId);
       return NextResponse.json({ success: true, action: 'released' });
     }
 
     if (action === 'claim') {
-      // Transfer deposit to owner's Stripe account
-      const ownerStripeId = booking.listing?.stripe_account_id;
-      if (!ownerStripeId) return NextResponse.json({ error: 'Owner has no Stripe account connected' }, { status: 400 });
+      // Capture the hold (now actually charges the renter), then transfer to owner
+      await stripe.paymentIntents.capture(depositPiId, { amount_to_capture: depositCents });
 
-      await stripe.transfers.create({
-        amount: depositCents,
-        currency: 'usd',
-        destination: ownerStripeId,
-        transfer_group: bookingId,
-      });
+      const ownerStripeId = booking.listing?.stripe_account_id;
+      if (ownerStripeId) {
+        await stripe.transfers.create({
+          amount: depositCents,
+          currency: 'usd',
+          destination: ownerStripeId,
+          transfer_group: bookingId,
+        });
+      }
+
       await supabase.from('bookings').update({ deposit_status: 'claimed' }).eq('id', bookingId);
       return NextResponse.json({ success: true, action: 'claimed' });
     }
