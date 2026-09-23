@@ -25,6 +25,7 @@ export default function ListPage() {
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [aiGenerating, setAiGenerating] = useState(false);
   const [userEmail, setUserEmail] = useState('');
   const [form, setForm] = useState({
     name: '', email: '', phone: '',
@@ -61,6 +62,36 @@ export default function ListPage() {
     if (error) throw new Error('Photo upload failed: ' + error.message);
     const { data } = supabase.storage.from('listings').getPublicUrl(path);
     return data.publicUrl;
+  };
+
+  const generateWithAI = async () => {
+    if (!photoFile) return;
+    setAiGenerating(true);
+    try {
+      const reader = new FileReader();
+      const base64 = await new Promise<string>((resolve, reject) => {
+        reader.onload = () => resolve((reader.result as string).split(',')[1]);
+        reader.onerror = reject;
+        reader.readAsDataURL(photoFile);
+      });
+      const res = await fetch('/api/describe-photo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ imageBase64: base64, mimeType: photoFile.type }),
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      setForm(f => ({
+        ...f,
+        title: data.title || f.title,
+        category: data.category || f.category,
+        description: data.description || f.description,
+      }));
+    } catch (err: any) {
+      alert('AI generation failed: ' + err.message);
+    } finally {
+      setAiGenerating(false);
+    }
   };
 
   const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }));
@@ -226,10 +257,18 @@ export default function ListPage() {
               <input id="photo-upload" type="file" accept="image/*" onChange={handlePhoto} style={{ display: 'none' }} />
             </div>
             {photoPreview && (
-              <button onClick={() => { setPhotoFile(null); setPhotoPreview(null); }}
-                style={{ marginTop: 8, fontSize: 13, color: 'var(--text-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
-                Remove photo
-              </button>
+              <div style={{ display: 'flex', gap: 10, marginTop: 10, alignItems: 'center' }}>
+                <button
+                  onClick={generateWithAI}
+                  disabled={aiGenerating}
+                  style={{ fontSize: 13, fontWeight: 700, color: '#fff', background: aiGenerating ? 'var(--border)' : 'var(--ocean)', border: 'none', borderRadius: 7, padding: '8px 14px', cursor: aiGenerating ? 'not-allowed' : 'pointer', fontFamily: 'inherit' }}>
+                  {aiGenerating ? '✨ Writing listing...' : '✨ Write listing with AI'}
+                </button>
+                <button onClick={() => { setPhotoFile(null); setPhotoPreview(null); }}
+                  style={{ fontSize: 13, color: 'var(--text-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+                  Remove photo
+                </button>
+              </div>
             )}
           </div>
 
