@@ -10,8 +10,6 @@ import { track } from '@vercel/analytics';
 const EMAILJS_SERVICE = 'service_ssteci9';
 const EMAILJS_TEMPLATE = 'template_9ylzhsa';
 const EMAILJS_PUBLIC_KEY = 'mYya3x3YoyhvwzvYR';
-const CLOUDINARY_CLOUD = 'bf4ll8ab';
-const CLOUDINARY_PRESET = 'wnkj6w7s';
 
 const CATEGORIES = ['Surfboards', 'Golf Clubs', 'Kayaks', 'Beach Chairs', 'Paddleboards', 'Bikes', 'Fishing Gear', 'Camping Gear', 'Bundles', 'Other'];
 const LOCATIONS = ['Folly Beach', 'Isle of Palms', "Sullivan's Island", 'Kiawah Island', 'Wild Dunes', 'James Island', 'Mount Pleasant', 'Downtown Charleston'];
@@ -56,13 +54,13 @@ export default function ListPage() {
 
   const uploadPhoto = async (): Promise<string | null> => {
     if (!photoFile) return null;
-    const data = new FormData();
-    data.append('file', photoFile);
-    data.append('upload_preset', CLOUDINARY_PRESET);
-    const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/image/upload`, { method: 'POST', body: data });
-    const json = await res.json();
-    if (json.error) throw new Error('Photo upload failed: ' + json.error.message);
-    return json.secure_url || null;
+    const supabase = createClient();
+    const ext = photoFile.name.split('.').pop() || 'jpg';
+    const path = `photos/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+    const { error } = await supabase.storage.from('listings').upload(path, photoFile, { cacheControl: '3600', upsert: false });
+    if (error) throw new Error('Photo upload failed: ' + error.message);
+    const { data } = supabase.storage.from('listings').getPublicUrl(path);
+    return data.publicUrl;
   };
 
   const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }));
