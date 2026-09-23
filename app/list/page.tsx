@@ -243,19 +243,18 @@ export default function ListPage() {
 
           <div>
             <label style={labelStyle}>Photo of your gear (optional but recommended)</label>
-            <div style={{ border: '2px dashed var(--border)', borderRadius: 10, padding: 20, textAlign: 'center', cursor: 'pointer', background: 'var(--surface)', position: 'relative' }}
-              onClick={() => document.getElementById('photo-upload')?.click()}>
+            <label htmlFor="photo-upload" style={{ border: '2px dashed var(--border)', borderRadius: 10, padding: 20, textAlign: 'center', cursor: 'pointer', background: 'var(--surface)', position: 'relative', display: 'block' }}>
               {photoPreview ? (
                 <img src={photoPreview} alt="Preview" style={{ maxHeight: 200, maxWidth: '100%', borderRadius: 8, objectFit: 'cover' }} />
               ) : (
                 <>
                   <div style={{ fontSize: 32, marginBottom: 8 }}>📷</div>
-                  <p style={{ fontSize: 14, color: 'var(--text-muted)', margin: 0 }}>Click to upload a photo</p>
+                  <p style={{ fontSize: 14, color: 'var(--text-muted)', margin: 0 }}>Tap to upload a photo</p>
                   <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '4px 0 0' }}>JPG or PNG, max 10MB</p>
                 </>
               )}
               <input id="photo-upload" type="file" accept="image/*" onChange={handlePhoto} style={{ display: 'none' }} />
-            </div>
+            </label>
             {photoPreview && (
               <div style={{ display: 'flex', gap: 10, marginTop: 10, alignItems: 'center' }}>
                 <button
