@@ -200,6 +200,10 @@ export default function DashboardClient({ user, listings: initialListings, booki
                   </p>
                 </div>
                 <div style={{ display: 'flex', gap: 8, flexShrink: 0, flexWrap: 'wrap' }}>
+                  <Link href={`/list/edit/${listing.id}`}
+                    style={{ fontSize: 13, padding: '6px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', textDecoration: 'none', fontWeight: 500, display: 'inline-flex', alignItems: 'center' }}>
+                    Edit
+                  </Link>
                   {listing.is_approved && (
                     <button
                       onClick={() => toggleActive(listing.id, listing.is_active)}
