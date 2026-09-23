@@ -59,13 +59,10 @@ export default function ListPage() {
     const data = new FormData();
     data.append('file', photoFile);
     data.append('upload_preset', CLOUDINARY_PRESET);
-    try {
-      const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/image/upload`, { method: 'POST', body: data });
-      const json = await res.json();
-      return json.secure_url || null;
-    } catch {
-      return null;
-    }
+    const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/image/upload`, { method: 'POST', body: data });
+    const json = await res.json();
+    if (json.error) throw new Error('Photo upload failed: ' + json.error.message);
+    return json.secure_url || null;
   };
 
   const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }));
