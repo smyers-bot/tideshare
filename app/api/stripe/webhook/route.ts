@@ -32,12 +32,22 @@ export async function POST(req: NextRequest) {
   const bookingId = session.metadata?.booking_id;
   const depositAmount = parseFloat(session.metadata?.deposit_amount || '0');
 
-  // Only proceed if this booking has a deposit and payment succeeded
-  if (!bookingId || depositAmount <= 0 || session.payment_status !== 'paid') {
+  // Only rental-payment sessions carry booking_id in metadata (the deposit-only
+  // checkout in /api/deposit/authorize does not), so this never double-fires.
+  if (!bookingId || session.payment_status !== 'paid') {
     return NextResponse.json({ received: true });
   }
 
   const supabase = createAdminClient();
+
+  // Mark the booking paid regardless of whether it also has a deposit — this was
+  // previously only done as a side effect of the deposit-hold branch below, so any
+  // booking without a deposit never left 'approved' even after payment succeeded.
+  await supabase.from('bookings').update({ status: 'paid' }).eq('id', bookingId);
+
+  if (depositAmount <= 0) {
+    return NextResponse.json({ received: true });
+  }
 
   try {
     // Get the payment method from the completed payment intent
