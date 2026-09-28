@@ -28,6 +28,7 @@ export async function POST(req: NextRequest) {
         type: 'express',
         email: user.email,
         capabilities: { card_payments: { requested: true }, transfers: { requested: true } },
+        metadata: { user_id: user.id },
       });
       accountId = account.id;
     }
