@@ -5,13 +5,13 @@ const CATEGORIES = ['Surfboards', 'Golf Clubs', 'Kayaks', 'Beach Chairs', 'Paddl
 
 export async function POST(req: NextRequest) {
   try {
-    const { imageBase64, mimeType } = await req.json();
-    if (!imageBase64) return NextResponse.json({ error: 'No image provided' }, { status: 400 });
+    const { imageUrl } = await req.json();
+    if (!imageUrl) return NextResponse.json({ error: 'No image provided' }, { status: 400 });
 
     const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
     const message = await client.messages.create({
-      model: 'claude-haiku-4-5-20251001',
+      model: 'claude-sonnet-5',
       max_tokens: 512,
       messages: [
         {
@@ -19,28 +19,31 @@ export async function POST(req: NextRequest) {
           content: [
             {
               type: 'image',
-              source: { type: 'base64', media_type: mimeType || 'image/jpeg', data: imageBase64 },
+              source: { type: 'url', url: imageUrl },
             },
             {
               type: 'text',
-              text: `You are helping a gear owner list their item on TideShare, a peer-to-peer gear rental marketplace in Charleston, SC for tourists.
+              text: `Look carefully at this photo and identify the SPECIFIC item shown. Do not guess or assume — only describe what you can actually see.
 
-Look at this photo and respond with ONLY valid JSON in this exact format:
+This item will be listed for rent on TideShare, a gear rental marketplace in Charleston, SC. Pick the closest matching category from: ${CATEGORIES.join(', ')}.
+
+Respond with ONLY valid JSON, no markdown, no extra text:
 {
-  "title": "short descriptive title (e.g. 'Soft-top Surfboard 7ft' or 'Callaway Golf Club Set')",
-  "category": "one of: ${CATEGORIES.join(', ')}",
-  "description": "2-3 sentence description highlighting condition, what's included, and why it's great for Charleston/beach visitors. Friendly, specific tone."
-}
-
-No extra text, just the JSON.`,
+  "title": "specific name of the item you see (brand + model if visible, e.g. 'Callaway Rogue Driver' or 'Lifetime Kayak 10ft')",
+  "category": "closest matching category from the list above",
+  "description": "2-3 sentences about the specific item in the photo — condition, what's included, why it's useful for visitors. Be accurate to what you see."
+}`,
             },
           ],
         },
       ],
     });
 
-    const text = message.content[0].type === 'text' ? message.content[0].text : '';
-    const parsed = JSON.parse(text);
+    const raw = message.content[0].type === 'text' ? message.content[0].text : '';
+    const text = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '').trim();
+    // Replace literal control characters (newlines, tabs) inside JSON string values
+    const sanitized = text.replace(/[\x00-\x1F\x7F]/g, ' ');
+    const parsed = JSON.parse(sanitized);
 
     return NextResponse.json({
       title: parsed.title || '',

@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import NavBar from '@/app/components/NavBar';
+import Footer from '@/app/components/Footer';
+import { createClient } from '@/app/lib/supabase/server';
 
 export const metadata: Metadata = {
   title: 'TideShare — Rent Beach & Outdoor Gear in Charleston SC',
@@ -19,18 +21,15 @@ const CATEGORIES = [
   { emoji: '🎣', label: 'Fishing Gear' },
 ];
 
-const SAMPLE_LISTINGS = [
-  { id: 1, title: 'Soft-top Surfboard', owner: 'Jake', location: 'Folly Beach', price: 45, emoji: '🏄', rating: 4.9, reviews: 23, tag: 'Most popular' },
-  { id: 2, title: 'Tandem Paddleboard Set', owner: 'Mary', location: "Isle of Palms", price: 75, emoji: '🏄‍♀️', rating: 5.0, reviews: 11, tag: 'Top rated' },
-  { id: 3, title: 'Tandem Kayak', owner: 'Chris', location: "Sullivan's Island", price: 65, emoji: '🚣', rating: 4.8, reviews: 17, tag: null },
-  { id: 4, title: 'Beach Chair + Umbrella Set', owner: 'Dana', location: 'Folly Beach', price: 25, emoji: '🏖️', rating: 4.7, reviews: 31, tag: null },
-  { id: 5, title: 'Paddleboard (11ft)', owner: 'Sam', location: 'Isle of Palms', price: 55, emoji: '🏄‍♀️', rating: 4.9, reviews: 8, tag: null },
-  { id: 6, title: 'Beach Cruiser Bikes (2)', owner: 'Tara', location: 'Folly Beach', price: 35, emoji: '🚲', rating: 4.6, reviews: 19, tag: null },
-  { id: 7, title: 'Full Golf Club Set (RH)', owner: 'Brett', location: 'Kiawah Island', price: 60, emoji: '⛳', rating: 5.0, reviews: 9, tag: 'New' },
-  { id: 13, title: 'Beach Day Bundle', owner: 'Dana', location: 'Folly Beach', price: 45, emoji: '🎉', rating: 4.9, reviews: 14, tag: 'Bundle' },
-];
-
-export default function Home() {
+export default async function Home() {
+  const supabase = await createClient();
+  const { data: featuredListings } = await supabase
+    .from('listings')
+    .select('id, title, owner_name, location, price, emoji, photo_url, category')
+    .eq('is_approved', true)
+    .eq('is_active', true)
+    .order('created_at', { ascending: false })
+    .limit(8);
   return (
     <main style={{ background: 'var(--bg)', minHeight: '100vh' }}>
 
@@ -80,31 +79,23 @@ export default function Home() {
           <Link href="/browse" style={{ fontSize: 14, color: 'var(--ocean)', fontWeight: 600, textDecoration: 'none' }}>See all →</Link>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 20 }}>
-          {SAMPLE_LISTINGS.map(listing => (
+          {(featuredListings || []).map(listing => (
             <Link key={listing.id} href={`/gear/${listing.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
-              <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, overflow: 'hidden', transition: 'box-shadow 0.2s' }}>
-                {/* Gear image placeholder */}
-                <div style={{ height: 180, background: 'linear-gradient(135deg, var(--ocean-light), var(--bg-subtle))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 64, position: 'relative' }}>
-                  {listing.emoji}
-                  {listing.tag && (
-                    <span style={{ position: 'absolute', top: 12, left: 12, background: 'var(--ocean)', color: '#fff', fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 10, letterSpacing: '0.03em' }}>
-                      {listing.tag}
-                    </span>
-                  )}
+              <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, overflow: 'hidden' }}>
+                <div style={{ height: 180, background: listing.photo_url ? 'none' : 'linear-gradient(135deg, var(--ocean-light), var(--bg-subtle))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 64, overflow: 'hidden' }}>
+                  {listing.photo_url
+                    ? <img src={listing.photo_url} alt={listing.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    : listing.emoji}
                 </div>
                 <div style={{ padding: 16 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
-                    <div>
-                      <p style={{ fontWeight: 700, fontSize: 15, marginBottom: 2 }}>{listing.title}</p>
-                      <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>Listed by {listing.owner} · {listing.location}</p>
-                    </div>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--border)' }}>
+                  <p style={{ fontWeight: 700, fontSize: 15, marginBottom: 2 }}>{listing.title}</p>
+                  <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 12 }}>Listed by {listing.owner_name} · {listing.location}</p>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 12, borderTop: '1px solid var(--border)' }}>
                     <div>
                       <span style={{ fontSize: 18, fontWeight: 800, color: 'var(--ocean)' }}>${listing.price}</span>
                       <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>/day</span>
                     </div>
-                    <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>⭐ {listing.rating} ({listing.reviews})</span>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--ocean)', background: 'var(--ocean-light)', padding: '2px 8px', borderRadius: 6 }}>New</span>
                   </div>
                 </div>
               </div>
@@ -120,8 +111,8 @@ export default function Home() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 40 }}>
             {[
               { icon: '🔍', title: 'Find gear nearby', body: 'Browse surfboards, kayaks, paddleboards, golf clubs and more listed by Charleston locals — pick your beach and your dates.' },
-              { icon: '📲', title: 'Book instantly', body: 'Request the gear, the owner confirms, and you pay securely through the app. No shop, no waiting.' },
-              { icon: '🤝', title: 'Meet your neighbor', body: 'Pick up the gear locally, enjoy your day, and return it when you\'re done. Simple as borrowing from a friend.' },
+              { icon: '📲', title: 'Request to rent', body: 'Send a booking request, the owner confirms, and you pay securely through the app. No shop, no waiting.' },
+              { icon: '🤝', title: 'Pick up or get delivery', body: 'Pick up locally — or if the owner offers delivery, have it brought to you. Return it when you\'re done. Simple as borrowing from a friend.' },
             ].map(s => (
               <div key={s.title} style={{ textAlign: 'center' }}>
                 <div style={{ fontSize: 40, marginBottom: 16 }}>{s.icon}</div>
@@ -129,6 +120,63 @@ export default function Home() {
                 <p style={{ fontSize: 15, color: 'var(--text-muted)', lineHeight: 1.7 }}>{s.body}</p>
               </div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Renter & Owner workflows */}
+      <section style={{ padding: '64px 24px', background: 'var(--bg)' }}>
+        <div style={{ maxWidth: 900, margin: '0 auto' }}>
+          <h2 style={{ fontSize: 28, fontWeight: 700, textAlign: 'center', marginBottom: 12, letterSpacing: '-0.3px' }}>Simple for everyone</h2>
+          <p style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: 15, marginBottom: 48 }}>Whether you're renting gear or listing it, the process is straightforward.</p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 28 }}>
+
+            {/* Renter side */}
+            <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, padding: '32px 28px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 28 }}>
+                <span style={{ fontSize: 24 }}>🏄</span>
+                <h3 style={{ fontSize: 18, fontWeight: 800, margin: 0 }}>Renting gear</h3>
+              </div>
+              {[
+                { n: '1', text: 'Browse gear near your beach and pick your dates.' },
+                { n: '2', text: 'Send a booking request — no payment yet.' },
+                { n: '3', text: 'Owner confirms within a few hours, then you pay securely.' },
+                { n: '4', text: 'Pick up locally, or get delivery if the owner offers it.' },
+                { n: '5', text: 'Return it when you\'re done. That\'s it.' },
+              ].map(s => (
+                <div key={s.n} style={{ display: 'flex', gap: 14, marginBottom: 18, alignItems: 'flex-start' }}>
+                  <span style={{ flexShrink: 0, width: 26, height: 26, borderRadius: '50%', background: 'var(--ocean)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700 }}>{s.n}</span>
+                  <p style={{ fontSize: 15, lineHeight: 1.5, color: 'var(--text-muted)', margin: 0 }}>{s.text}</p>
+                </div>
+              ))}
+              <Link href="/browse" style={{ display: 'inline-block', marginTop: 8, background: 'var(--ocean)', color: '#fff', padding: '11px 22px', borderRadius: 8, fontSize: 14, fontWeight: 700, textDecoration: 'none' }}>
+                Browse gear →
+              </Link>
+            </div>
+
+            {/* Owner side */}
+            <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, padding: '32px 28px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 28 }}>
+                <span style={{ fontSize: 24 }}>💰</span>
+                <h3 style={{ fontSize: 18, fontWeight: 800, margin: 0 }}>Listing gear</h3>
+              </div>
+              {[
+                { n: '1', text: 'List your gear free in under 5 minutes — you set the price.' },
+                { n: '2', text: 'Get notified when someone requests your dates.' },
+                { n: '3', text: 'Confirm or decline. You\'re always in control.' },
+                { n: '4', text: 'Renter pays securely. You keep 85% — paid within 24 hrs of return.' },
+                { n: '5', text: 'Optional deposit protects you if anything comes back damaged.' },
+              ].map(s => (
+                <div key={s.n} style={{ display: 'flex', gap: 14, marginBottom: 18, alignItems: 'flex-start' }}>
+                  <span style={{ flexShrink: 0, width: 26, height: 26, borderRadius: '50%', background: 'var(--sand)', color: '#0F1F2E', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700 }}>{s.n}</span>
+                  <p style={{ fontSize: 15, lineHeight: 1.5, color: 'var(--text-muted)', margin: 0 }}>{s.text}</p>
+                </div>
+              ))}
+              <Link href="/list" style={{ display: 'inline-block', marginTop: 8, background: 'var(--sand)', color: '#0F1F2E', padding: '11px 22px', borderRadius: 8, fontSize: 14, fontWeight: 700, textDecoration: 'none' }}>
+                List your gear free →
+              </Link>
+            </div>
+
           </div>
         </div>
       </section>
@@ -148,16 +196,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer style={{ borderTop: '1px solid var(--border)', padding: '24px', textAlign: 'center' }}>
-        <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 8 }}>
-          © 2026 TideShare · Made in Charleston, SC 🌊
-        </p>
-        <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>
-          <Link href="/terms" style={{ color: 'var(--text-muted)', textDecoration: 'none', marginRight: 16 }}>Terms of Service</Link>
-          <Link href="/privacy" style={{ color: 'var(--text-muted)', textDecoration: 'none' }}>Privacy Policy</Link>
-        </p>
-      </footer>
+      <Footer />
     </main>
   );
 }

@@ -37,7 +37,7 @@ type Booking = {
 };
 
 type Props = {
-  user: { id: string; email: string; displayName: string };
+  user: { id: string; email: string; displayName: string; stripeAccountId?: string };
   listings: Listing[];
   bookings: Booking[];
 };
@@ -55,18 +55,25 @@ export default function DashboardClient({ user, listings: initialListings, booki
   const [toggling, setToggling] = useState<string | null>(null);
   const [connectingStripe, setConnectingStripe] = useState(false);
   const [depositAction, setDepositAction] = useState<string | null>(null);
+  const [bookingAction, setBookingAction] = useState<string | null>(null);
+  const [completingBooking, setCompletingBooking] = useState<string | null>(null);
+  const [paymentLinks, setPaymentLinks] = useState<Record<string, string>>({});
   const supabase = createClient();
 
-  const stripeConnected = listings.some(l => l.stripe_account_id);
+  const stripeConnected = !!user.stripeAccountId || listings.some(l => l.stripe_account_id);
 
   const connectStripe = async () => {
     setConnectingStripe(true);
     try {
       const res = await fetch('/api/stripe/onboard', { method: 'POST' });
       const data = await res.json();
-      if (data.url) window.location.href = data.url;
-    } catch {
-      alert('Could not connect Stripe. Try again.');
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        throw new Error(data.error || `Server returned ${res.status}`);
+      }
+    } catch (err: any) {
+      alert('Could not connect Stripe: ' + (err?.message || 'Unknown error'));
     } finally {
       setConnectingStripe(false);
     }
@@ -107,8 +114,87 @@ export default function DashboardClient({ user, listings: initialListings, booki
     }
   };
 
-  const pendingBookings = bookings.filter(b => b.status === 'pending' || b.status === 'pending_payment');
-  const confirmedBookings = bookings.filter(b => b.status === 'confirmed' || b.status === 'paid');
+  const handleCompleteBooking = async (bookingId: string) => {
+    if (!confirm('Mark this rental as completed? The renter will be able to leave a review.')) return;
+    setCompletingBooking(bookingId);
+    try {
+      const res = await fetch('/api/bookings', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bookingId, action: 'complete' }),
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      setBookings(bs => bs.map(b => b.id === bookingId ? { ...b, status: 'completed' } : b));
+    } catch (err: any) {
+      alert('Error: ' + err.message);
+    } finally {
+      setCompletingBooking(null);
+    }
+  };
+
+  const approveBooking = async (bookingId: string) => {
+    setBookingAction(bookingId + 'approve');
+    try {
+      const res = await fetch('/api/bookings/approve', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bookingId }),
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      setPaymentLinks(p => ({ ...p, [bookingId]: data.paymentUrl }));
+      setBookings(bs => bs.map(b => b.id === bookingId ? { ...b, status: 'approved' } : b));
+    } catch (err: any) {
+      alert('Error: ' + err.message);
+    } finally {
+      setBookingAction(null);
+    }
+  };
+
+  const declineBooking = async (bookingId: string) => {
+    if (!confirm('Decline this booking request?')) return;
+    setBookingAction(bookingId + 'decline');
+    try {
+      const res = await fetch('/api/bookings/decline', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bookingId }),
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      setBookings(bs => bs.map(b => b.id === bookingId ? { ...b, status: 'declined' } : b));
+    } catch (err: any) {
+      alert('Error: ' + err.message);
+    } finally {
+      setBookingAction(null);
+    }
+  };
+
+  const cancelBooking = async (bookingId: string, isPaid: boolean) => {
+    const msg = isPaid
+      ? 'Cancel this booking and issue a full refund to the renter?'
+      : 'Cancel this booking?';
+    if (!confirm(msg)) return;
+    setBookingAction(bookingId + 'cancel');
+    try {
+      const res = await fetch('/api/bookings/cancel', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bookingId }),
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      setBookings(bs => bs.map(b => b.id === bookingId ? { ...b, status: 'cancelled' } : b));
+    } catch (err: any) {
+      alert('Error: ' + err.message);
+    } finally {
+      setBookingAction(null);
+    }
+  };
+
+  const pendingBookings = bookings.filter(b => b.status === 'pending' || b.status === 'pending_payment' || b.status === 'pending_approval');
+  const confirmedBookings = bookings.filter(b => b.status === 'confirmed' || b.status === 'paid' || b.status === 'approved' || b.status === 'completed');
 
   const pill = (label: string, color: string, bg: string) => (
     <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 10, background: bg, color, letterSpacing: '0.04em' }}>{label}</span>
@@ -239,11 +325,15 @@ export default function DashboardClient({ user, listings: initialListings, booki
               <div key={booking.id} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '16px 20px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 10, marginBottom: 10 }}>
                   <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3, flexWrap: 'wrap' }}>
                       <span style={{ fontWeight: 700, fontSize: 15 }}>{booking.renter_name}</span>
-                      {booking.status === 'pending' || booking.status === 'pending_payment'
-                        ? pill('Pending payment', '#92400E', '#FEF3C7')
-                        : pill('Paid ✓', '#1A7F4B', '#E6F4ED')}
+                      {(booking.status === 'pending_approval') && pill('Awaiting your approval', '#92400E', '#FEF3C7')}
+                      {(booking.status === 'approved') && pill('Approved — awaiting payment', '#1D4ED8', '#DBEAFE')}
+                      {(booking.status === 'pending' || booking.status === 'pending_payment') && pill('Pending payment', '#92400E', '#FEF3C7')}
+                      {(booking.status === 'confirmed' || booking.status === 'paid') && pill('Paid ✓', '#1A7F4B', '#E6F4ED')}
+                      {booking.status === 'declined' && pill('Declined', '#6B7280', '#F3F4F6')}
+                      {booking.status === 'cancelled' && pill('Cancelled', '#6B7280', '#F3F4F6')}
+                      {booking.status === 'completed' && pill('Completed ✓', '#1A7F4B', '#E6F4ED')}
                     </div>
                     <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>
                       {booking.listing?.title} · {booking.days} day{booking.days !== 1 ? 's' : ''}
@@ -255,11 +345,67 @@ export default function DashboardClient({ user, listings: initialListings, booki
                     <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>You earn ${Math.round(booking.total_price * 0.85)}</div>
                   </div>
                 </div>
-                <div style={{ fontSize: 13, color: 'var(--text-muted)', display: 'flex', gap: 20, flexWrap: 'wrap', marginBottom: booking.deposit_amount > 0 ? 12 : 0 }}>
+                <div style={{ fontSize: 13, color: 'var(--text-muted)', display: 'flex', gap: 20, flexWrap: 'wrap', marginBottom: 12 }}>
                   <span>📧 {booking.renter_email}</span>
                   {booking.renter_phone && <span>📞 {booking.renter_phone}</span>}
                   {booking.message && <span>💬 "{booking.message}"</span>}
                 </div>
+
+                {/* Approve / Decline */}
+                {booking.status === 'pending_approval' && (
+                  <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
+                    {!stripeConnected ? (
+                      <p style={{ fontSize: 13, color: '#92400E', background: '#FEF3C7', padding: '8px 12px', borderRadius: 8, margin: 0 }}>
+                        Connect Stripe above before accepting bookings.
+                      </p>
+                    ) : (
+                      <button
+                        onClick={() => approveBooking(booking.id)}
+                        disabled={bookingAction !== null}
+                        style={{ fontSize: 13, padding: '7px 14px', borderRadius: 6, border: '1px solid #A7D9BA', background: '#E6F4ED', color: '#1A7F4B', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700 }}>
+                        {bookingAction === booking.id + 'approve' ? 'Approving...' : '✓ Accept — send payment link'}
+                      </button>
+                    )}
+                    <button
+                      onClick={() => declineBooking(booking.id)}
+                      disabled={bookingAction !== null}
+                      style={{ fontSize: 13, padding: '7px 14px', borderRadius: 6, border: '1px solid #FECACA', background: '#FEF2F2', color: '#991B1B', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>
+                      {bookingAction === booking.id + 'decline' ? '...' : '✗ Decline'}
+                    </button>
+                  </div>
+                )}
+
+                {/* Payment link after approval */}
+                {booking.status === 'approved' && paymentLinks[booking.id] && (
+                  <div style={{ marginBottom: 12, padding: '10px 14px', background: '#DBEAFE', borderRadius: 8, border: '1px solid #BFDBFE' }}>
+                    <p style={{ fontSize: 13, fontWeight: 700, color: '#1D4ED8', marginBottom: 6 }}>Send this payment link to the renter:</p>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                      <code style={{ fontSize: 12, background: '#fff', padding: '4px 8px', borderRadius: 4, wordBreak: 'break-all', flex: 1 }}>{paymentLinks[booking.id]}</code>
+                      <button onClick={() => { navigator.clipboard.writeText(paymentLinks[booking.id]); alert('Copied!'); }}
+                        style={{ fontSize: 12, padding: '5px 10px', borderRadius: 6, border: '1px solid #BFDBFE', background: '#fff', color: '#1D4ED8', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600, flexShrink: 0 }}>
+                        Copy
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Cancel / Refund / Complete */}
+                {(booking.status === 'confirmed' || booking.status === 'paid') && (
+                  <div style={{ marginBottom: 12, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    <button
+                      onClick={() => handleCompleteBooking(booking.id)}
+                      disabled={completingBooking !== null}
+                      style={{ fontSize: 12, padding: '5px 12px', borderRadius: 6, border: '1px solid #A7D9BA', background: '#E6F4ED', color: '#1A7F4B', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>
+                      {completingBooking === booking.id ? 'Marking...' : '✓ Mark rental completed'}
+                    </button>
+                    <button
+                      onClick={() => cancelBooking(booking.id, true)}
+                      disabled={bookingAction !== null}
+                      style={{ fontSize: 12, padding: '5px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text-muted)', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 500 }}>
+                      {bookingAction === booking.id + 'cancel' ? 'Cancelling...' : 'Cancel & refund renter'}
+                    </button>
+                  </div>
+                )}
 
                 {booking.deposit_amount > 0 && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', background: 'var(--bg)', borderRadius: 8, border: '1px solid var(--border)', flexWrap: 'wrap' }}>

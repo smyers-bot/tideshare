@@ -1,26 +1,27 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import NavBar from '@/app/components/NavBar';
+import Footer from '@/app/components/Footer';
 
 export const metadata: Metadata = {
   title: 'List Your Gear & Earn | TideShare Charleston',
-  description: 'Turn idle beach gear into income. List your surfboard, kayak, paddleboard, golf clubs or bikes on TideShare and earn $200–$600/weekend renting to Charleston visitors. Free to list — 15% fee only when you earn.',
+  description: 'Turn idle beach gear into income. List your surfboard, kayak, paddleboard, golf clubs or bikes on TideShare and earn $75–$210/weekend renting to Charleston visitors. Free to list — 15% fee only when you earn.',
 };
 
 const GEAR_EXAMPLES = [
-  { emoji: '🏄', item: 'Surfboard', earn: '$45/day', weekend: '$270' },
-  { emoji: '⛺', item: 'Camping Gear', earn: '$40–55/day', weekend: '$330' },
-  { emoji: '🚣', item: 'Kayak', earn: '$40–65/day', weekend: '$390' },
-  { emoji: '🚲', item: 'Bikes (pair)', earn: '$35/day', weekend: '$210' },
-  { emoji: '⛳', item: 'Golf Club Set', earn: '$50–70/day', weekend: '$420' },
-  { emoji: '🏖️', item: 'Beach Chairs + Umbrella', earn: '$25/day', weekend: '$150' },
+  { emoji: '🏄', item: 'Surfboard', earn: '$45/day', weekend: '$135' },
+  { emoji: '⛺', item: 'Camping Gear', earn: '$40–55/day', weekend: '$165' },
+  { emoji: '🚣', item: 'Kayak', earn: '$40–65/day', weekend: '$195' },
+  { emoji: '🚲', item: 'Bikes (pair)', earn: '$35/day', weekend: '$105' },
+  { emoji: '⛳', item: 'Golf Club Set', earn: '$50–70/day', weekend: '$210' },
+  { emoji: '🏖️', item: 'Beach Chairs + Umbrella', earn: '$25/day', weekend: '$75' },
 ];
 
 const HOW_IT_WORKS = [
   {
     step: '1',
     title: 'List in 5 minutes',
-    body: 'Tell us what you have, your price, and when it\'s available. We review and get it live within 24 hours. Free to list — always.',
+    body: 'Tell us what you have, your price, and when it\'s available. Your listing goes live immediately — no waiting. Free to list, always.',
   },
   {
     step: '2',
@@ -46,11 +47,11 @@ const FAQS = [
   },
   {
     q: 'How do I get paid?',
-    a: 'Payment is collected from the renter when they book and released to you within 24 hours of the rental ending. Direct deposit to your bank account.',
+    a: 'No charge is made to the renter until you confirm their request. Once you confirm, TideShare collects payment and releases your 85% cut within 24 hours of the rental ending. Direct deposit to your bank account.',
   },
   {
     q: 'Can I block off dates?',
-    a: 'Yes — your availability calendar is fully in your control. Block any days you need the gear yourself, and renters can only book open dates.',
+    a: 'Yes — you set your availability when you list. Just describe when the gear is available (e.g. "weekends only" or "most days May–Sept") and renters will see that before requesting.',
   },
   {
     q: 'Do I have to deliver the gear?',
@@ -83,7 +84,7 @@ export default function OwnersPage() {
           <Link href="/list" style={{ background: 'var(--sand)', color: '#0F1F2E', padding: '14px 32px', borderRadius: 8, fontSize: 15, fontWeight: 700, textDecoration: 'none', display: 'inline-block' }}>
             List your gear — it's free →
           </Link>
-          <p style={{ fontSize: 13, opacity: 0.6, marginTop: 14 }}>Free to list · 15% fee only when you earn · Cancel any time</p>
+          <p style={{ fontSize: 13, opacity: 0.6, marginTop: 14 }}>Free to list · 15% fee only when you earn · Delist any time</p>
         </div>
       </section>
 
@@ -138,6 +139,33 @@ export default function OwnersPage() {
         </div>
       </section>
 
+      {/* Damage protection */}
+      <section style={{ padding: '64px 24px', background: 'var(--bg)', borderTop: '1px solid var(--border)' }}>
+        <div style={{ maxWidth: 700, margin: '0 auto' }}>
+          <h2 style={{ fontSize: 26, fontWeight: 700, marginBottom: 12, letterSpacing: '-0.3px' }}>🛡️ How damage protection works</h2>
+          <p style={{ fontSize: 15, color: 'var(--text-muted)', lineHeight: 1.7, marginBottom: 36 }}>
+            Every renter agrees to our Terms of Service before booking — making them financially liable for damage beyond normal wear. Here's exactly what happens if something goes wrong.
+          </p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 20, marginBottom: 32 }}>
+            {[
+              { icon: '🔒', title: 'Hold placed after booking', body: 'When you set a deposit, TideShare places a card authorization hold on the renter\'s card after they pay the rental — not a charge, just a hold.' },
+              { icon: '📸', title: 'Document the return', body: 'Take a quick photo before and after handoff. If damage is visible, you have the evidence you need to file a claim from your dashboard.' },
+              { icon: '⚡', title: 'Claim if gear is damaged', body: 'Gear came back damaged? Click "Claim deposit" in your dashboard within 7 days. The hold is captured and transferred to you.' },
+              { icon: '✅', title: 'Release if all clear', body: 'No damage? Click "Release deposit" and the hold is voided — the renter never sees a charge. Holds also auto-expire after 7 days if you take no action.' },
+            ].map(s => (
+              <div key={s.title} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: 20 }}>
+                <div style={{ fontSize: 28, marginBottom: 10 }}>{s.icon}</div>
+                <p style={{ fontWeight: 700, fontSize: 14, marginBottom: 6 }}>{s.title}</p>
+                <p style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.6 }}>{s.body}</p>
+              </div>
+            ))}
+          </div>
+          <div style={{ background: 'var(--ocean-light)', border: '1px solid var(--ocean)', borderRadius: 10, padding: '14px 18px', fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.6 }}>
+            <strong style={{ color: 'var(--ocean)' }}>What the deposit covers:</strong> Physical damage beyond normal wear — broken parts, cracks, missing components. It doesn't cover minor scratches or normal use. For damage exceeding the deposit amount, the renter remains liable under the Terms of Service and you can pursue them directly.
+          </div>
+        </div>
+      </section>
+
       {/* FAQ */}
       <section style={{ background: 'var(--bg-subtle)', borderTop: '1px solid var(--border)', padding: '64px 24px' }}>
         <div style={{ maxWidth: 700, margin: '0 auto' }}>
@@ -160,7 +188,7 @@ export default function OwnersPage() {
             Ready to start earning?
           </h2>
           <p style={{ fontSize: 16, color: 'rgba(255,255,255,0.8)', marginBottom: 28, lineHeight: 1.6 }}>
-            Takes 5 minutes. We review every listing and get it live within 24 hours.
+            Takes 5 minutes. Your listing goes live immediately.
           </p>
           <Link href="/list" style={{ background: 'var(--sand)', color: '#0F1F2E', padding: '14px 32px', borderRadius: 8, fontSize: 15, fontWeight: 700, textDecoration: 'none', display: 'inline-block' }}>
             List your gear — it's free
@@ -168,12 +196,7 @@ export default function OwnersPage() {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer style={{ borderTop: '1px solid var(--border)', padding: '24px', textAlign: 'center' }}>
-        <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>
-          © 2026 TideShare · Made in Charleston, SC 🌊
-        </p>
-      </footer>
+      <Footer />
     </div>
   );
 }

@@ -1,0 +1,84 @@
+import { NextRequest, NextResponse } from 'next/server';
+import Stripe from 'stripe';
+import { createAdminClient } from '@/app/lib/supabase/admin';
+
+export const config = { api: { bodyParser: false } };
+
+export async function POST(req: NextRequest) {
+  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+
+  if (!webhookSecret) {
+    console.error('STRIPE_WEBHOOK_SECRET not set');
+    return NextResponse.json({ error: 'Webhook secret not configured' }, { status: 500 });
+  }
+
+  const sig = req.headers.get('stripe-signature');
+  const body = await req.text();
+
+  let event: Stripe.Event;
+  try {
+    event = stripe.webhooks.constructEvent(body, sig!, webhookSecret);
+  } catch (err: any) {
+    console.error('Webhook signature verification failed:', err.message);
+    return NextResponse.json({ error: 'Invalid signature' }, { status: 400 });
+  }
+
+  if (event.type !== 'checkout.session.completed') {
+    return NextResponse.json({ received: true });
+  }
+
+  const session = event.data.object as Stripe.Checkout.Session;
+  const bookingId = session.metadata?.booking_id;
+  const depositAmount = parseFloat(session.metadata?.deposit_amount || '0');
+
+  // Only proceed if this booking has a deposit and payment succeeded
+  if (!bookingId || depositAmount <= 0 || session.payment_status !== 'paid') {
+    return NextResponse.json({ received: true });
+  }
+
+  const supabase = createAdminClient();
+
+  try {
+    // Get the payment method from the completed payment intent
+    const paymentIntentId = session.payment_intent as string;
+    if (!paymentIntentId) return NextResponse.json({ received: true });
+
+    const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+    const paymentMethodId = paymentIntent.payment_method as string;
+    const customerId = (paymentIntent.customer || session.customer) as string;
+
+    if (!paymentMethodId || !customerId) {
+      console.error('No payment method or customer on completed session', session.id);
+      await supabase.from('bookings').update({ deposit_status: 'failed' }).eq('id', bookingId);
+      return NextResponse.json({ received: true });
+    }
+
+    // Create a deposit authorization hold (manual capture = hold, not a charge)
+    const depositCents = Math.round(depositAmount * 100);
+    const depositIntent = await stripe.paymentIntents.create({
+      amount: depositCents,
+      currency: 'usd',
+      customer: customerId,
+      payment_method: paymentMethodId,
+      confirm: true,
+      capture_method: 'manual',
+      off_session: true,
+      description: `Security deposit — refundable hold for booking ${bookingId}`,
+      metadata: { booking_id: bookingId, type: 'deposit_hold' },
+    });
+
+    await supabase.from('bookings').update({
+      deposit_payment_intent_id: depositIntent.id,
+      deposit_status: depositIntent.status === 'requires_capture' ? 'authorized' : 'failed',
+    }).eq('id', bookingId);
+
+    console.log(`Deposit hold ${depositIntent.id} created for booking ${bookingId} — status: ${depositIntent.status}`);
+  } catch (err: any) {
+    console.error('Deposit auto-authorize failed:', err.message);
+    // Non-fatal: rental payment already succeeded, mark deposit as failed so owner can see
+    await supabase.from('bookings').update({ deposit_status: 'failed' }).eq('id', bookingId);
+  }
+
+  return NextResponse.json({ received: true });
+}

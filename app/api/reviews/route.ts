@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/app/lib/supabase/server';
+import { createAdminClient } from '@/app/lib/supabase/admin';
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const listing_id = searchParams.get('listing_id');
   if (!listing_id) return NextResponse.json({ error: 'listing_id required' }, { status: 400 });
 
-  const supabase = await createClient();
-  const { data, error } = await supabase
+  // Use admin client so RLS doesn't block public review reads
+  const admin = createAdminClient();
+  const { data, error } = await admin
     .from('reviews')
     .select('*')
     .eq('listing_id', listing_id)
@@ -20,14 +21,29 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const { listing_id, reviewer_name, reviewer_id, rating, comment } = await req.json();
-    if (!listing_id || !reviewer_name || !rating) {
+    if (!listing_id || !reviewer_name || !rating || !reviewer_id) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
-    const supabase = await createClient();
-    const { error } = await supabase.from('reviews').insert({
+
+    const admin = createAdminClient();
+
+    // Server-side enforcement: reviewer must have a completed booking for this listing.
+    const { data: bookings } = await admin
+      .from('bookings')
+      .select('id')
+      .eq('listing_id', listing_id)
+      .eq('renter_id', reviewer_id)
+      .eq('status', 'completed')
+      .limit(1);
+
+    if (!bookings || bookings.length === 0) {
+      return NextResponse.json({ error: 'Reviews are only allowed after a completed rental.' }, { status: 403 });
+    }
+
+    const { error } = await admin.from('reviews').insert({
       listing_id,
       reviewer_name,
-      reviewer_id: reviewer_id || null,
+      reviewer_id,
       rating,
       comment: comment || '',
     });

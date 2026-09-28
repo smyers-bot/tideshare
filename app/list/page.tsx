@@ -2,14 +2,9 @@
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import emailjs from '@emailjs/browser';
 import { createClient } from '@/app/lib/supabase/client';
 import NavBar from '@/app/components/NavBar';
 import { track } from '@vercel/analytics';
-
-const EMAILJS_SERVICE = 'service_ssteci9';
-const EMAILJS_TEMPLATE = 'template_9ylzhsa';
-const EMAILJS_PUBLIC_KEY = 'mYya3x3YoyhvwzvYR';
 
 const CATEGORIES = ['Surfboards', 'Golf Clubs', 'Kayaks', 'Beach Chairs', 'Paddleboards', 'Bikes', 'Fishing Gear', 'Camping Gear', 'Bundles', 'Other'];
 const LOCATIONS = ['Folly Beach', 'Isle of Palms', "Sullivan's Island", 'Kiawah Island', 'Wild Dunes', 'James Island', 'Mount Pleasant', 'Downtown Charleston'];
@@ -26,12 +21,17 @@ export default function ListPage() {
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [aiGenerating, setAiGenerating] = useState(false);
+  const [uploadedPhotoUrl, setUploadedPhotoUrl] = useState<string | null>(null);
   const [userEmail, setUserEmail] = useState('');
+  const [emailVerified, setEmailVerified] = useState(true);
+  const [depositAmount, setDepositAmount] = useState('');
+  const [submitAttempted, setSubmitAttempted] = useState(false);
+  const [titleTouched, setTitleTouched] = useState(false);
   const [form, setForm] = useState({
     name: '', email: '', phone: '',
     title: '', category: '', location: '', price: '',
     description: '', availability: '',
-    fulfillment: 'pickup', deliveryRadius: '', deliveryFee: '', deposit: '',
+    fulfillment: 'pickup', deliveryRadius: '', deliveryFee: '',
   });
   const router = useRouter();
 
@@ -43,6 +43,7 @@ export default function ListPage() {
       const email = data.user.email || '';
       setUserEmail(email);
       setForm(f => ({ ...f, name, email }));
+      setEmailVerified(!!data.user.email_confirmed_at || data.user.app_metadata?.provider === 'google');
     });
   }, []);
 
@@ -55,12 +56,14 @@ export default function ListPage() {
 
   const uploadPhoto = async (): Promise<string | null> => {
     if (!photoFile) return null;
+    if (uploadedPhotoUrl) return uploadedPhotoUrl;
     const supabase = createClient();
     const ext = photoFile.name.split('.').pop() || 'jpg';
     const path = `photos/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
     const { error } = await supabase.storage.from('listings').upload(path, photoFile, { cacheControl: '3600', upsert: false });
     if (error) throw new Error('Photo upload failed: ' + error.message);
     const { data } = supabase.storage.from('listings').getPublicUrl(path);
+    setUploadedPhotoUrl(data.publicUrl);
     return data.publicUrl;
   };
 
@@ -68,16 +71,13 @@ export default function ListPage() {
     if (!photoFile) return;
     setAiGenerating(true);
     try {
-      const reader = new FileReader();
-      const base64 = await new Promise<string>((resolve, reject) => {
-        reader.onload = () => resolve((reader.result as string).split(',')[1]);
-        reader.onerror = reject;
-        reader.readAsDataURL(photoFile);
-      });
+      // Upload photo first to get a public URL (avoids mobile HEIC/base64 issues)
+      const imageUrl = await uploadPhoto();
+      if (!imageUrl) throw new Error('Photo upload failed');
       const res = await fetch('/api/describe-photo', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ imageBase64: base64, mimeType: photoFile.type }),
+        body: JSON.stringify({ imageUrl }),
       });
       const data = await res.json();
       if (data.error) throw new Error(data.error);
@@ -106,7 +106,21 @@ export default function ListPage() {
     marginBottom: 6, display: 'block', letterSpacing: '0.02em',
   };
 
-  const canSubmit = form.name && form.email && form.title && form.category && form.location && form.price;
+  const priceNum = parseFloat(form.price);
+  const priceError = form.price && (priceNum < 5 || priceNum > 500) ? 'Price must be between $5 and $500/day.' : '';
+  const depositNum = parseFloat(depositAmount);
+  const depositError = depositAmount && (depositNum < 0 || depositNum > 2000) ? 'Deposit must be between $0 and $2,000.' : '';
+  const deliveryFeeNum = parseFloat(form.deliveryFee);
+  const deliveryFeeError = form.fulfillment === 'delivery' && form.deliveryFee && (deliveryFeeNum < 0 || deliveryFeeNum > 500) ? 'Delivery fee must be between $0 and $500.' : '';
+  const missingFields = [
+    !form.name && 'Your name',
+    !form.email && 'Email',
+    !form.title && 'Gear title',
+    !form.category && 'Category',
+    !form.location && 'Location',
+    !form.price && 'Daily price',
+  ].filter(Boolean) as string[];
+  const canSubmit = missingFields.length === 0 && !priceError && !depositError && !deliveryFeeError && emailVerified;
 
   if (submitted) {
     return (
@@ -115,7 +129,7 @@ export default function ListPage() {
           <div style={{ fontSize: 64, marginBottom: 24 }}>🎉</div>
           <h1 style={{ fontSize: 28, fontWeight: 800, marginBottom: 12 }}>Listing submitted!</h1>
           <p style={{ fontSize: 16, color: 'var(--text-muted)', lineHeight: 1.7, marginBottom: 28 }}>
-            Your listing is under review and will go live shortly. You can track it from your dashboard.
+            Your listing is live and renters can request it immediately. You'll get an email when someone books. Track everything from your dashboard.
           </p>
           <Link href="/dashboard" style={{ background: 'var(--ocean)', color: '#fff', padding: '12px 28px', borderRadius: 8, fontSize: 15, fontWeight: 700, textDecoration: 'none', display: 'inline-block' }}>
             Go to dashboard →
@@ -142,42 +156,54 @@ export default function ListPage() {
         </div>
 
         <h1 style={{ fontSize: 28, fontWeight: 800, marginBottom: 8, letterSpacing: '-0.3px' }}>List your gear</h1>
-        <p style={{ color: 'var(--text-muted)', marginBottom: 32, fontSize: 15 }}>Takes 5 minutes. Your listing goes live after a quick review.</p>
+        <p style={{ color: 'var(--text-muted)', marginBottom: 32, fontSize: 15 }}>Takes 5 minutes. Your listing goes live immediately.</p>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
             <div>
-              <label style={labelStyle}>Your name</label>
-              <input style={inputStyle} placeholder="Jake" value={form.name} onChange={e => set('name', e.target.value)} />
+              <label htmlFor="owner-name" style={labelStyle}>Your name</label>
+              <input id="owner-name" style={inputStyle} placeholder="Your first name" value={form.name} onChange={e => set('name', e.target.value)} />
             </div>
             <div>
-              <label style={labelStyle}>Phone (optional)</label>
-              <input style={inputStyle} placeholder="(843) 555-0100" value={form.phone} onChange={e => set('phone', e.target.value)} />
+              <label htmlFor="owner-phone" style={labelStyle}>Phone (optional)</label>
+              <input id="owner-phone" style={inputStyle} placeholder="(843) 555-0100" value={form.phone} onChange={e => set('phone', e.target.value)} />
             </div>
           </div>
 
           <div>
-            <label style={labelStyle}>Email</label>
-            <input style={inputStyle} type="email" placeholder="you@email.com" value={form.email} onChange={e => set('email', e.target.value)} />
+            <label htmlFor="owner-email" style={labelStyle}>Email</label>
+            <input id="owner-email" style={inputStyle} type="email" placeholder="you@email.com" value={form.email} onChange={e => set('email', e.target.value)} />
           </div>
 
           <div style={{ borderTop: '1px solid var(--border)', paddingTop: 20 }}>
-            <label style={labelStyle}>What are you listing?</label>
-            <input style={inputStyle} placeholder="Soft-top surfboard, 7ft" value={form.title} onChange={e => set('title', e.target.value)} />
+            <label htmlFor="gear-title" style={labelStyle}>What are you listing?</label>
+            <input
+              id="gear-title"
+              style={{ ...inputStyle, borderColor: (titleTouched || submitAttempted) && !form.title ? '#ef4444' : undefined }}
+              placeholder="Soft-top surfboard, 7ft"
+              value={form.title}
+              onChange={e => set('title', e.target.value)}
+              onBlur={() => setTitleTouched(true)}
+              autoComplete="off"
+              name="gear-title"
+            />
+            {(titleTouched || submitAttempted) && !form.title && (
+              <p style={{ fontSize: 12, color: '#ef4444', marginTop: 5 }}>Gear title is required.</p>
+            )}
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
             <div>
-              <label style={labelStyle}>Category</label>
-              <select style={inputStyle} value={form.category} onChange={e => set('category', e.target.value)}>
+              <label htmlFor="gear-category" style={labelStyle}>Category</label>
+              <select id="gear-category" style={inputStyle} value={form.category} onChange={e => set('category', e.target.value)}>
                 <option value="">Select...</option>
                 {CATEGORIES.map(c => <option key={c}>{c}</option>)}
               </select>
             </div>
             <div>
-              <label style={labelStyle}>Your location</label>
-              <select style={inputStyle} value={form.location} onChange={e => set('location', e.target.value)}>
+              <label htmlFor="gear-location" style={labelStyle}>Your location</label>
+              <select id="gear-location" style={inputStyle} value={form.location} onChange={e => set('location', e.target.value)}>
                 <option value="">Select...</option>
                 {LOCATIONS.map(l => <option key={l}>{l}</option>)}
               </select>
@@ -198,52 +224,72 @@ export default function ListPage() {
             {form.fulfillment === 'delivery' && (
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 12 }}>
                 <div>
-                  <label style={labelStyle}>Max delivery radius (miles)</label>
-                  <input style={inputStyle} type="number" placeholder="10" value={form.deliveryRadius} onChange={e => set('deliveryRadius', e.target.value)} />
+                  <label htmlFor="delivery-radius" style={labelStyle}>Max delivery radius (miles)</label>
+                  <input id="delivery-radius" style={inputStyle} type="number" placeholder="10" value={form.deliveryRadius} onChange={e => set('deliveryRadius', e.target.value)} />
                 </div>
                 <div>
-                  <label style={labelStyle}>Delivery fee</label>
+                  <label htmlFor="delivery-fee" style={labelStyle}>Delivery fee</label>
                   <div style={{ position: 'relative' }}>
                     <span style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', fontWeight: 600 }}>$</span>
-                    <input style={{ ...inputStyle, paddingLeft: 28 }} type="number" placeholder="20" value={form.deliveryFee} onChange={e => set('deliveryFee', e.target.value)} />
+                    <input id="delivery-fee" style={{ ...inputStyle, paddingLeft: 28, borderColor: deliveryFeeError ? '#ef4444' : undefined }} type="number" placeholder="20" min="0" max="500" autoComplete="off" name="delivery-fee" value={form.deliveryFee} onChange={e => set('deliveryFee', e.target.value)} />
                   </div>
+                  {deliveryFeeError && <p style={{ fontSize: 12, color: '#ef4444', marginTop: 5 }}>{deliveryFeeError}</p>}
                 </div>
               </div>
             )}
           </div>
 
           <div>
-            <label style={labelStyle}>Daily price (you keep 85%)</label>
+            <label htmlFor="gear-price" style={labelStyle}>Daily price (you keep 85%)</label>
             <div style={{ position: 'relative' }}>
               <span style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', fontWeight: 600 }}>$</span>
-              <input style={{ ...inputStyle, paddingLeft: 28 }} type="number" placeholder="45" value={form.price} onChange={e => set('price', e.target.value)} />
+              <input
+                id="gear-price"
+                style={{ ...inputStyle, paddingLeft: 28, borderColor: priceError ? '#ef4444' : undefined }}
+                type="number" placeholder="45" min="5" max="500"
+                autoComplete="off"
+                value={form.price} onChange={e => set('price', e.target.value)} />
             </div>
+            {priceError && <p style={{ fontSize: 12, color: '#ef4444', marginTop: 5 }}>{priceError}</p>}
+            {!priceError && <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 5 }}>$5 minimum · $500 maximum</p>}
           </div>
 
           <div>
-            <label style={labelStyle}>Security deposit (optional)</label>
+            <label htmlFor="deposit-security-x" style={labelStyle}>Security deposit (optional)</label>
             <div style={{ position: 'relative' }}>
               <span style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', fontWeight: 600 }}>$</span>
-              <input style={{ ...inputStyle, paddingLeft: 28 }} type="number" placeholder="100" value={form.deposit} onChange={e => set('deposit', e.target.value)} />
+              <input
+                style={{ ...inputStyle, paddingLeft: 28, borderColor: depositError ? '#ef4444' : undefined }}
+                type="text" inputMode="numeric" pattern="[0-9]*" placeholder="100"
+                autoComplete="new-password" name="deposit-security-x" id="deposit-security-x"
+                value={depositAmount}
+                onChange={e => {
+                  const raw = e.target.value.replace(/[^0-9]/g, '');
+                  setDepositAmount(raw);
+                }} />
             </div>
-            <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 5 }}>Collected at booking, returned within 48 hrs if no damage reported.</p>
+            {depositError && <p style={{ fontSize: 12, color: '#ef4444', marginTop: 5 }}>{depositError}</p>}
+            <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 5 }}>A card authorization hold — not a charge — placed on the renter's card after they pay. After return, release it from your dashboard (hold is voided, renter never charged) or claim it if gear is damaged. Holds auto-expire after 7 days if you take no action. Max $2,000.</p>
           </div>
 
           <div>
-            <label style={labelStyle}>Description (optional)</label>
-            <textarea style={{ ...inputStyle, minHeight: 80, resize: 'vertical' }}
+            <label htmlFor="gear-description" style={labelStyle}>Description (optional)</label>
+            <textarea id="gear-description" style={{ ...inputStyle, minHeight: 80, resize: 'vertical' }}
               placeholder="Condition, what's included, pickup instructions..."
               value={form.description} onChange={e => set('description', e.target.value)} />
           </div>
 
           <div>
-            <label style={labelStyle}>Availability (optional)</label>
-            <input style={inputStyle} placeholder="Weekends only, or most days May–Sept" value={form.availability} onChange={e => set('availability', e.target.value)} />
+            <label htmlFor="gear-availability" style={labelStyle}>Availability (optional)</label>
+            <input id="gear-availability" style={inputStyle} placeholder="Weekends only, or most days May–Sept" value={form.availability} onChange={e => set('availability', e.target.value)} />
           </div>
 
           <div>
             <label style={labelStyle}>Photo of your gear (optional but recommended)</label>
-            <label htmlFor="photo-upload" style={{ border: '2px dashed var(--border)', borderRadius: 10, padding: 20, textAlign: 'center', cursor: 'pointer', background: 'var(--surface)', position: 'relative', display: 'block' }}>
+            <button
+              type="button"
+              onClick={() => document.getElementById('photo-upload')?.click()}
+              style={{ border: '2px dashed var(--border)', borderRadius: 10, padding: 20, textAlign: 'center', cursor: 'pointer', background: 'var(--surface)', position: 'relative', display: 'block', width: '100%', fontFamily: 'inherit' }}>
               {photoPreview ? (
                 <img src={photoPreview} alt="Preview" style={{ maxHeight: 200, maxWidth: '100%', borderRadius: 8, objectFit: 'cover' }} />
               ) : (
@@ -253,8 +299,8 @@ export default function ListPage() {
                   <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '4px 0 0' }}>JPG or PNG, max 10MB</p>
                 </>
               )}
-              <input id="photo-upload" type="file" accept="image/*" onChange={handlePhoto} style={{ display: 'none' }} />
-            </label>
+            </button>
+            <input id="photo-upload" type="file" accept="image/*" onChange={handlePhoto} style={{ display: 'none' }} />
             {photoPreview && (
               <div style={{ display: 'flex', gap: 10, marginTop: 10, alignItems: 'center' }}>
                 <button
@@ -271,8 +317,21 @@ export default function ListPage() {
             )}
           </div>
 
+          {!emailVerified && (
+            <p style={{ fontSize: 13, color: '#713F12', background: '#FEF9C3', border: '1px solid #FDE047', borderRadius: 8, padding: '10px 14px' }}>
+              ✉️ Please verify your email address before listing gear. Check your inbox, or use the "Resend email" button at the top of the page.
+            </p>
+          )}
+
+          {submitAttempted && missingFields.length > 0 && (
+            <p style={{ fontSize: 13, color: '#ef4444', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 8, padding: '10px 14px' }}>
+              Please fill in: {missingFields.join(', ')}.
+            </p>
+          )}
+
           <button
             onClick={async () => {
+              setSubmitAttempted(true);
               if (!canSubmit) return;
               setSending(true);
               try {
@@ -283,9 +342,14 @@ export default function ListPage() {
                 const supabase = createClient();
                 const { data: { user } } = await supabase.auth.getUser();
                 if (!user) { router.push('/auth/signin?next=/list'); return; }
+                if (!user.email_confirmed_at && user.app_metadata?.provider !== 'google') {
+                  throw new Error('Please verify your email address before listing gear.');
+                }
 
+                const stripeAccountId = user.user_metadata?.stripe_account_id || '';
                 const { error: dbError } = await supabase.from('listings').insert({
                   user_id: user.id,
+                  stripe_account_id: stripeAccountId || undefined,
                   title: form.title,
                   category: form.category,
                   location: form.location,
@@ -298,19 +362,29 @@ export default function ListPage() {
                   owner_phone: form.phone || '',
                   emoji: CATEGORY_EMOJI[form.category] || '📦',
                   is_approved: true,
-                  deposit_amount: form.deposit ? parseFloat(form.deposit) : 0,
+                  deposit_amount: depositAmount ? parseFloat(depositAmount) : 0,
                   fulfillment_type: form.fulfillment,
                   delivery_radius: form.fulfillment === 'delivery' ? parseInt(form.deliveryRadius) || 0 : 0,
                   delivery_fee: form.fulfillment === 'delivery' ? parseFloat(form.deliveryFee) || 0 : 0,
                 });
                 if (dbError) throw new Error(dbError.message);
 
-                await emailjs.send(EMAILJS_SERVICE, EMAILJS_TEMPLATE, {
-                  name: form.name, email: form.email, phone: form.phone || 'Not provided',
-                  title: form.title, category: form.category, location: form.location,
-                  price: form.price, availability: form.availability || 'Not specified',
-                  description: form.description || 'None', photo_url: photoUrl || 'No photo uploaded',
-                }, EMAILJS_PUBLIC_KEY);
+                await fetch('/api/send-email', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    type: 'new_listing',
+                    ownerName: form.name,
+                    ownerEmail: form.email,
+                    ownerPhone: form.phone || '',
+                    title: form.title,
+                    category: form.category,
+                    location: form.location,
+                    price: form.price,
+                    description: form.description || '',
+                    photoUrl: photoUrl || '',
+                  }),
+                });
 
                 track('listing_submitted', { category: form.category, location: form.location, price: parseFloat(form.price), fulfillment: form.fulfillment });
                 setSubmitted(true);
@@ -326,7 +400,7 @@ export default function ListPage() {
           </button>
 
           <p style={{ fontSize: 13, color: 'var(--text-muted)', textAlign: 'center' }}>
-            Free to list · 15% fee only when you earn · Cancel any time
+            Free to list · 15% fee only when you earn · Cancel listings any time
           </p>
         </div>
       </div>

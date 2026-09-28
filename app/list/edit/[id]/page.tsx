@@ -286,7 +286,7 @@ export default function EditListingPage() {
           </div>
 
           <div>
-            <label style={labelStyle}>Description (optional)</label>
+            <label style={labelStyle}>Description (optional — or tap a new photo above and use ✨ Rewrite with AI)</label>
             <textarea style={{ ...inputStyle, minHeight: 80, resize: 'vertical' }}
               value={form.description} onChange={e => set('description', e.target.value)} />
           </div>

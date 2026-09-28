@@ -1,65 +1,40 @@
 'use client';
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
-import emailjs from '@emailjs/browser';
 import { createClient } from '@/app/lib/supabase/client';
 import NavBar from '@/app/components/NavBar';
+import Footer from '@/app/components/Footer';
 import { track } from '@vercel/analytics';
 
-const EMAILJS_SERVICE = 'service_ssteci9';
-const EMAILJS_BOOKING_TEMPLATE = 'template_2m74q94';
-const EMAILJS_PUBLIC_KEY = 'mYya3x3YoyhvwzvYR';
-
-const HARDCODED: Record<string, any> = {
-  '1': { title: 'Soft-top Surfboard', owner_name: 'Jake', owner_since: 'May 2026', location: 'Folly Beach', price: 45, emoji: '🏄', rating: 4.9, reviews_count: 23, category: 'Surfboards', is_active: true, description: "Perfect beginner/intermediate board. 7ft soft-top, super stable. Comes with leash and wax. Pickup at my place 2 blocks from the water — I'll give you a quick rundown on local breaks.", rules: ['No surfing past sunset', 'Rinse off before return', 'Minor dings happen — major damage is on you'] },
-  '2': { title: 'Tandem Paddleboard Set', owner_name: 'Mary', owner_since: 'March 2025', location: 'Isle of Palms', price: 75, emoji: '🏄‍♀️', rating: 5.0, reviews_count: 11, category: 'Paddleboards', is_active: true, description: "Two 11ft paddleboards perfect for exploring IOP together. Both include paddles and leashes. Great for calm mornings on the Intracoastal or the connector beach.", rules: ['Leashes must be worn', 'No offshore paddling', 'Return clean and dry'] },
-  '3': { title: 'Tandem Kayak', owner_name: 'Chris', owner_since: 'June 2025', location: "Sullivan's Island", price: 65, emoji: '🚣', rating: 4.8, reviews_count: 17, category: 'Kayaks', is_active: true, description: "Stable tandem kayak great for the Intracoastal or calm ocean paddling. Includes paddles, two PFDs, and a dry bag.", rules: ['PFDs must be worn', 'No open water past the inlet', 'Return by 6pm'] },
-  '4': { title: 'Beach Chair + Umbrella Set', owner_name: 'Dana', owner_since: 'April 2026', location: 'Folly Beach', price: 25, emoji: '🏖️', rating: 4.7, reviews_count: 31, category: 'Beach Chairs', is_active: true, description: "2 low-slung beach chairs + large umbrella. Folds into a carry bag.", rules: ['Return same day by 7pm', 'Keep sand out of chair fabric'] },
-  '5': { title: 'Paddleboard (11ft)', owner_name: 'Sam', owner_since: 'January 2026', location: 'Isle of Palms', price: 55, emoji: '🏄‍♀️', rating: 4.9, reviews_count: 8, category: 'Paddleboards', is_active: true, description: "Solid epoxy 11ft board, great for flat water and light chop. Includes paddle and leash.", rules: ['Leash must be worn', 'No offshore paddling', 'Return clean and dry'] },
-  '6': { title: 'Beach Cruiser Bikes (2)', owner_name: 'Tara', owner_since: 'May 2025', location: 'Folly Beach', price: 35, emoji: '🚲', rating: 4.6, reviews_count: 19, category: 'Bikes', is_active: false, description: "Two matching beach cruisers with baskets. Helmets included.", rules: ['Helmets must be worn', 'Lock bikes when not in use', 'Return by 8pm'] },
-  '7': { title: 'Camping Gear Bundle', owner_name: 'Rob', owner_since: 'February 2025', location: 'James Island', price: 55, emoji: '⛺', rating: 4.8, reviews_count: 6, category: 'Camping Gear', is_active: true, description: "4-person tent, sleeping bags, camp chairs, and a portable camp stove.", rules: ['Return all items packed as received', 'No open fires near tent', 'Return by 10am on checkout day'] },
-  '8': { title: 'Single Kayak', owner_name: 'Lisa', owner_since: 'July 2025', location: 'Folly Beach', price: 40, emoji: '🚣', rating: 4.9, reviews_count: 12, category: 'Kayaks', is_active: true, description: "Nimble sit-on-top kayak, great for solo paddlers.", rules: ['PFD must be worn', 'Return by sunset'] },
-  '9': { title: 'Fishing Rod + Tackle Kit', owner_name: 'Mike', owner_since: 'June 2026', location: "Sullivan's Island", price: 22, emoji: '🎣', rating: 4.5, reviews_count: 7, category: 'Fishing Gear', is_active: true, description: "Medium-heavy spinning rod with reel, plus a full tackle kit.", rules: ['Return tackle kit with same contents', 'Rinse rod and reel after saltwater use', 'Return same day'] },
-  '10': { title: 'Full Golf Club Set (RH)', owner_name: 'Brett', owner_since: 'August 2026', location: 'Kiawah Island', price: 60, emoji: '⛳', rating: 5.0, reviews_count: 9, category: 'Golf Clubs', is_active: true, description: "Callaway Rogue ST irons, TaylorMade driver, full bag with 14 clubs. Right-handed.", rules: ['No range balls with irons', 'Clean clubs before return', 'Lost club replacement at retail cost'] },
-  '11': { title: 'Ladies Golf Club Set', owner_name: 'Anne', owner_since: 'July 2026', location: 'Wild Dunes', price: 50, emoji: '⛳', rating: 4.8, reviews_count: 5, category: 'Golf Clubs', is_active: true, description: "Ping G Le3 ladies set, graphite shafts. Full bag.", rules: ['Clean clubs before return', 'Handle with care'] },
-  '12': { title: 'Golf Club Set + Push Cart', owner_name: 'Dave', owner_since: 'September 2026', location: 'Mount Pleasant', price: 70, emoji: '⛳', rating: 4.7, reviews_count: 3, category: 'Golf Clubs', is_active: true, description: "Cleveland set with Clicgear push cart. Right-handed.", rules: ['Return cart folded', 'Clean clubs before return'] },
-  '13': { title: 'Beach Day Bundle', owner_name: 'Dana', owner_since: 'April 2026', location: 'Folly Beach', price: 45, emoji: '🎉', rating: 4.9, reviews_count: 14, category: 'Bundles', is_active: true, description: "2 beach chairs, large shade umbrella, Spikeball set, and Kan Jam.", rules: ['Return same day by 7pm', 'Return games with all pieces'] },
-  '14': { title: 'Family Beach Bundle', owner_name: 'Sarah', owner_since: 'May 2026', location: 'Isle of Palms', price: 65, emoji: '👨‍👩‍👧‍👦', rating: 5.0, reviews_count: 8, category: 'Bundles', is_active: true, description: "4 beach chairs, XL umbrella, 30qt cooler, cornhole, and Spikeball.", rules: ['Return same day by 7pm', 'Return cooler emptied and rinsed'] },
-  '15': { title: 'Surf & Sand Bundle', owner_name: 'Jake', owner_since: 'May 2026', location: 'Folly Beach', price: 75, emoji: '🏄', rating: 4.8, reviews_count: 6, category: 'Bundles', is_active: true, description: "7ft soft-top surfboard + 2 beach chairs + shade umbrella.", rules: ['No surfing past sunset', 'Return chairs same day by 7pm'] },
-  '16': { title: 'Golf & Cooler Bundle', owner_name: 'Brett', owner_since: 'August 2026', location: 'Kiawah Island', price: 80, emoji: '⛳', rating: 5.0, reviews_count: 4, category: 'Bundles', is_active: true, description: "Full Callaway iron set + TaylorMade driver + 30qt Yeti cooler pre-loaded with ice.", rules: ['Clean clubs before return', 'Return cooler emptied and rinsed'] },
-};
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export default function GearDetailClient({ id }: { id: string }) {
   const [listing, setListing] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [step, setStep] = useState<'detail' | 'book' | 'confirmed'>('detail');
+  const [step, setStep] = useState<'detail' | 'book' | 'requested'>('detail');
   const [wantsDelivery, setWantsDelivery] = useState(false);
   const [form, setForm] = useState({ name: '', email: '', phone: '', startDate: '', endDate: '', message: '' });
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [sending, setSending] = useState(false);
+  const [dateError, setDateError] = useState('');
   const [reviews, setReviews] = useState<any[]>([]);
   const [reviewForm, setReviewForm] = useState({ rating: 0, comment: '' });
   const [reviewSending, setReviewSending] = useState(false);
   const [reviewDone, setReviewDone] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [currentUserName, setCurrentUserName] = useState('');
+  const [hasCompletedBooking, setHasCompletedBooking] = useState(false);
 
   useEffect(() => {
-    if (UUID_RE.test(id)) {
-      const supabase = createClient();
-      supabase.from('listings').select('*').eq('id', id).single()
-        .then(({ data }) => {
-          setListing(data || null);
-          setLoading(false);
-          if (data) track('listing_viewed', { title: data.title, category: data.category, location: data.location });
-        });
-    } else {
-      setListing(HARDCODED[id] || null);
-      setLoading(false);
-    }
-    // Pre-fill user info if signed in
+    const supabase = createClient();
+    supabase.from('listings').select('*').eq('id', id).single()
+      .then(({ data }) => {
+        setListing(data || null);
+        setLoading(false);
+        if (data) track('listing_viewed', { title: data.title, category: data.category, location: data.location });
+      });
+
     const supabaseAuth = createClient();
     supabaseAuth.auth.getUser().then(({ data }) => {
       if (data.user) {
@@ -70,10 +45,22 @@ export default function GearDetailClient({ id }: { id: string }) {
         }));
         setCurrentUserId(data.user.id);
         setCurrentUserName(data.user.user_metadata?.full_name || data.user.email || 'Anonymous');
+
+        if (UUID_RE.test(id)) {
+          supabaseAuth
+            .from('bookings')
+            .select('id')
+            .eq('listing_id', id)
+            .eq('renter_id', data.user.id)
+            .eq('status', 'completed')
+            .limit(1)
+            .then(({ data: bookings }) => {
+              setHasCompletedBooking((bookings?.length ?? 0) > 0);
+            });
+        }
       }
     });
 
-    // Fetch reviews for real listings
     if (UUID_RE.test(id)) {
       fetch(`/api/reviews?listing_id=${id}`)
         .then(r => r.json())
@@ -90,8 +77,10 @@ export default function GearDetailClient({ id }: { id: string }) {
   })();
 
   const deliveryFee = wantsDelivery && listing?.delivery_fee ? listing.delivery_fee : 0;
-  const baseTotal = Math.round(listing ? listing.price * days * 1.15 : 0);
-  const grandTotal = baseTotal + deliveryFee;
+  const rentalBase = listing ? listing.price * days : 0;
+  const baseTotal = Math.round(rentalBase * 1.15 * 100) / 100;
+  const grandTotal = Math.round((baseTotal + deliveryFee) * 100) / 100;
+  const tideshareFeeDue = Math.round((baseTotal - rentalBase) * 100) / 100;
 
   const inputStyle = {
     width: '100%', padding: '11px 14px', borderRadius: 8,
@@ -121,17 +110,20 @@ export default function GearDetailClient({ id }: { id: string }) {
     );
   }
 
-  if (step === 'confirmed') {
+  if (step === 'requested') {
     return (
       <div style={{ minHeight: '100vh', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
         <div style={{ textAlign: 'center', maxWidth: 480 }}>
-          <div style={{ fontSize: 64, marginBottom: 20 }}>🎉</div>
+          <div style={{ fontSize: 64, marginBottom: 20 }}>📬</div>
           <h1 style={{ fontSize: 28, fontWeight: 800, marginBottom: 12 }}>Request sent to {listing.owner_name}!</h1>
           <p style={{ fontSize: 16, color: 'var(--text-muted)', lineHeight: 1.7, marginBottom: 8 }}>
-            We've notified {listing.owner_name} of your request. They'll confirm within a few hours and reach out to {form.email} with pickup details.
+            {listing.owner_name} will confirm within a few hours. Once they accept, you'll receive a payment link at <strong>{form.email}</strong>.
+          </p>
+          <p style={{ fontSize: 14, color: 'var(--text-muted)', marginBottom: 8 }}>
+            No payment is charged until {listing.owner_name} confirms.
           </p>
           <p style={{ fontSize: 14, color: 'var(--text-muted)', marginBottom: 28 }}>
-            No payment is charged until {listing.owner_name} confirms.
+            Free cancellation up to 48 hours before your rental start.
           </p>
           <Link href="/browse" style={{ background: 'var(--ocean)', color: '#fff', padding: '12px 28px', borderRadius: 8, fontSize: 15, fontWeight: 700, textDecoration: 'none', display: 'inline-block' }}>
             Browse more gear
@@ -163,7 +155,9 @@ export default function GearDetailClient({ id }: { id: string }) {
               {!available && <span style={{ background: 'var(--border)', color: 'var(--text-muted)', fontSize: 12, fontWeight: 700, padding: '4px 12px', borderRadius: 8 }}>Unavailable</span>}
             </div>
             <p style={{ fontSize: 15, color: 'var(--text-muted)', marginBottom: 20 }}>
-              📍 {listing.location} {listing.rating ? `· ⭐ ${listing.rating} (${listing.reviews_count} reviews)` : ''}
+              📍 {listing.location} {reviews.length > 0
+                ? `· ⭐ ${(reviews.reduce((s, r) => s + r.rating, 0) / reviews.length).toFixed(1)} (${reviews.length} review${reviews.length !== 1 ? 's' : ''})`
+                : ''}
             </p>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: 16, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, marginBottom: 24 }}>
@@ -204,7 +198,7 @@ export default function GearDetailClient({ id }: { id: string }) {
               </>
             )}
 
-            {/* Reviews section — real listings only */}
+            {/* Reviews section */}
             {UUID_RE.test(id) && (
               <div style={{ marginTop: 36 }} id="reviews">
                 <h2 style={{ fontSize: 17, fontWeight: 700, marginBottom: 16 }}>
@@ -243,8 +237,8 @@ export default function GearDetailClient({ id }: { id: string }) {
                   ))}
                 </div>
 
-                {/* Leave a review form */}
-                {currentUserId && !reviewDone && (
+                {/* Leave a review form — completed renters only */}
+                {UUID_RE.test(id) && currentUserId && hasCompletedBooking && !reviewDone && (
                   <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: 20 }}>
                     <h3 style={{ fontSize: 15, fontWeight: 700, marginBottom: 14 }}>Leave a review</h3>
                     <div style={{ display: 'flex', gap: 6, marginBottom: 14 }}>
@@ -291,7 +285,10 @@ export default function GearDetailClient({ id }: { id: string }) {
                 {reviewDone && (
                   <p style={{ fontSize: 14, color: 'var(--ocean)', fontWeight: 600 }}>✓ Thanks for your review!</p>
                 )}
-                {!currentUserId && (
+                {UUID_RE.test(id) && currentUserId && !hasCompletedBooking && !reviewDone && (
+                  <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>Reviews are available after a completed rental.</p>
+                )}
+                {UUID_RE.test(id) && !currentUserId && (
                   <p style={{ fontSize: 14, color: 'var(--text-muted)' }}>
                     <a href="/auth/signin" style={{ color: 'var(--ocean)', fontWeight: 600, textDecoration: 'none' }}>Sign in</a> to leave a review.
                   </p>
@@ -310,16 +307,23 @@ export default function GearDetailClient({ id }: { id: string }) {
 
               {step === 'detail' && (
                 <>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 14 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: dateError ? 6 : 14 }}>
                     <div>
                       <label style={labelStyle}>Start date</label>
-                      <input style={inputStyle} type="date" value={form.startDate} onChange={e => set('startDate', e.target.value)} />
+                      <input style={{ ...inputStyle, borderColor: dateError ? '#ef4444' : undefined }} type="date" value={form.startDate}
+                        onChange={e => {
+                          set('startDate', e.target.value);
+                          setDateError('');
+                          if (form.endDate && e.target.value > form.endDate) set('endDate', '');
+                        }} />
                     </div>
                     <div>
                       <label style={labelStyle}>End date</label>
-                      <input style={inputStyle} type="date" value={form.endDate} onChange={e => set('endDate', e.target.value)} />
+                      <input style={{ ...inputStyle, borderColor: dateError ? '#ef4444' : undefined }} type="date" value={form.endDate}
+                        onChange={e => { set('endDate', e.target.value); setDateError(''); }} />
                     </div>
                   </div>
+                  {dateError && <p style={{ fontSize: 13, color: '#ef4444', marginBottom: 10, marginTop: 0 }}>{dateError}</p>}
 
                   {listing.fulfillment_type === 'delivery' && listing.delivery_radius > 0 && (
                     <label style={{ display: 'flex', gap: 10, alignItems: 'center', fontSize: 14, cursor: 'pointer', padding: '10px 12px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, marginBottom: 14 }}>
@@ -331,12 +335,12 @@ export default function GearDetailClient({ id }: { id: string }) {
                   {form.startDate && form.endDate && (
                     <div style={{ background: 'var(--bg-subtle)', borderRadius: 10, padding: '12px 14px', marginBottom: 14, fontSize: 14 }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                        <span style={{ color: 'var(--text-muted)' }}>${listing.price} × {days} day{days !== 1 ? 's' : ''}</span>
+                        <span style={{ color: 'var(--text-muted)' }}>${listing.price} &times; {days} day{days !== 1 ? 's' : ''}</span>
                         <span style={{ fontWeight: 600 }}>${listing.price * days}</span>
                       </div>
                       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
                         <span style={{ color: 'var(--text-muted)' }}>TideShare fee (15%)</span>
-                        <span style={{ fontWeight: 600 }}>${Math.round(listing.price * days * 0.15)}</span>
+                        <span style={{ fontWeight: 600 }}>${tideshareFeeDue.toFixed(2)}</span>
                       </div>
                       {deliveryFee > 0 && (
                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
@@ -346,13 +350,27 @@ export default function GearDetailClient({ id }: { id: string }) {
                       )}
                       <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid var(--border)', paddingTop: 8, marginTop: 4 }}>
                         <span style={{ fontWeight: 700 }}>Total</span>
-                        <span style={{ fontWeight: 800, color: 'var(--ocean)' }}>${grandTotal}</span>
+                        <span style={{ fontWeight: 800, color: 'var(--ocean)' }}>${grandTotal.toFixed(2)}</span>
                       </div>
                     </div>
                   )}
 
+                  {UUID_RE.test(id) && !listing.stripe_account_id && (
+                    <div style={{ background: '#FEF3C7', border: '1px solid #FDE68A', borderRadius: 8, padding: '10px 14px', marginBottom: 10, fontSize: 13, color: '#92400E' }}>
+                      ⚠️ This owner is still setting up payments. You can request — they'll reach out to arrange payment directly.
+                    </div>
+                  )}
                   <button
-                    onClick={() => { if (available) { setStep('book'); track('booking_started', { title: listing.title, price: listing.price, location: listing.location }); } }}
+                    onClick={() => {
+                      if (!available) return;
+                      const today = new Date().toISOString().split('T')[0];
+                      if (form.startDate && form.startDate < today) { setDateError('Start date cannot be in the past.'); return; }
+                      if (form.startDate && form.endDate && form.endDate < form.startDate) { setDateError('End date must be after start date.'); return; }
+                      if (form.startDate && form.endDate && days > 60) { setDateError('Rental period cannot exceed 60 days.'); return; }
+                      setDateError('');
+                      setStep('book');
+                      track('booking_started', { title: listing.title, price: listing.price, location: listing.location });
+                    }}
                     disabled={!available}
                     style={{ width: '100%', padding: '14px', borderRadius: 8, background: available ? 'var(--ocean)' : 'var(--border)', color: available ? '#fff' : 'var(--text-muted)', fontSize: 15, fontWeight: 700, border: 'none', cursor: available ? 'pointer' : 'not-allowed' }}>
                     {available ? 'Request to book' : 'Currently unavailable'}
@@ -360,11 +378,18 @@ export default function GearDetailClient({ id }: { id: string }) {
                   <p style={{ fontSize: 12, color: 'var(--text-muted)', textAlign: 'center', marginTop: 10 }}>
                     No charge until {listing.owner_name} confirms
                   </p>
-                  {listing.deposit_amount > 0 && (
+                  {listing.deposit_amount > 0 ? (
                     <p style={{ fontSize: 12, color: 'var(--text-muted)', textAlign: 'center', marginTop: 4 }}>
-                      🔒 ${listing.deposit_amount} refundable deposit · returned within 48 hrs
+                      🔒 ${listing.deposit_amount} card hold placed after booking — not a charge. Released by owner after a clean return, or auto-expires in 7 days.
+                    </p>
+                  ) : (
+                    <p style={{ fontSize: 12, color: 'var(--text-muted)', textAlign: 'center', marginTop: 4 }}>
+                      No deposit required
                     </p>
                   )}
+                  <p style={{ fontSize: 12, color: 'var(--text-muted)', textAlign: 'center', marginTop: 6 }}>
+                    Free cancellation 48+ hrs before start
+                  </p>
                 </>
               )}
 
@@ -372,7 +397,7 @@ export default function GearDetailClient({ id }: { id: string }) {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                   <div>
                     <label style={labelStyle}>Your name</label>
-                    <input style={inputStyle} placeholder="Alex Smith" value={form.name} onChange={e => set('name', e.target.value)} />
+                    <input style={inputStyle} placeholder="Your name" value={form.name} onChange={e => set('name', e.target.value)} />
                   </div>
                   <div>
                     <label style={labelStyle}>Email</label>
@@ -389,14 +414,39 @@ export default function GearDetailClient({ id }: { id: string }) {
                       value={form.message} onChange={e => set('message', e.target.value)} />
                   </div>
 
-                  {form.startDate && form.endDate && (
-                    <div style={{ background: 'var(--bg-subtle)', borderRadius: 10, padding: '12px 14px', fontSize: 14 }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid var(--border)', paddingTop: 4 }}>
-                        <span style={{ fontWeight: 700 }}>Total due at confirm</span>
-                        <span style={{ fontWeight: 800, color: 'var(--ocean)' }}>${grandTotal}</span>
-                      </div>
-                    </div>
-                  )}
+                  <div style={{ background: 'var(--bg-subtle)', borderRadius: 10, padding: '12px 14px', fontSize: 14 }}>
+                    {form.startDate && form.endDate ? (
+                      <>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                          <span style={{ color: 'var(--text-muted)' }}>{form.startDate} → {form.endDate}</span>
+                          <span style={{ fontWeight: 600 }}>{days} day{days !== 1 ? 's' : ''}</span>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                          <span style={{ color: 'var(--text-muted)' }}>${listing.price} &times; {days} day{days !== 1 ? 's' : ''}</span>
+                          <span style={{ fontWeight: 600 }}>${listing.price * days}</span>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                          <span style={{ color: 'var(--text-muted)' }}>TideShare fee (15%)</span>
+                          <span style={{ fontWeight: 600 }}>${tideshareFeeDue.toFixed(2)}</span>
+                        </div>
+                        {deliveryFee > 0 && (
+                          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                            <span style={{ color: 'var(--text-muted)' }}>Delivery</span>
+                            <span style={{ fontWeight: 600 }}>${deliveryFee}</span>
+                          </div>
+                        )}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid var(--border)', paddingTop: 8, marginTop: 4 }}>
+                          <span style={{ fontWeight: 700 }}>Total due at confirm</span>
+                          <span style={{ fontWeight: 800, color: 'var(--ocean)' }}>${grandTotal.toFixed(2)}</span>
+                        </div>
+                      </>
+                    ) : (
+                      <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: 0 }}>No dates selected — you'll confirm pricing with {listing.owner_name}.</p>
+                    )}
+                    <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 10, marginBottom: 0 }}>
+                      No charge until {listing.owner_name} confirms · Free cancellation 48+ hrs before start
+                    </p>
+                  </div>
 
                   <label style={{ display: 'flex', gap: 10, alignItems: 'flex-start', fontSize: 13, color: 'var(--text-muted)', cursor: 'pointer' }}>
                     <input type="checkbox" checked={agreedToTerms} onChange={e => setAgreedToTerms(e.target.checked)} style={{ marginTop: 2, flexShrink: 0 }} />
@@ -408,42 +458,52 @@ export default function GearDetailClient({ id }: { id: string }) {
                       if (!form.name || !form.email || !form.phone || !agreedToTerms) return;
                       setSending(true);
                       try {
-                        // Save booking to Supabase (for real DB listings only)
+                        // Save booking to Supabase via server route (works for authenticated and guest renters)
                         let bookingId = '';
                         if (UUID_RE.test(id)) {
-                          const supabase = createClient();
-                          const { data: bData } = await supabase.from('bookings').insert({
-                            listing_id: id,
-                            renter_name: form.name,
-                            renter_email: form.email,
-                            renter_phone: form.phone,
-                            start_date: form.startDate || null,
-                            end_date: form.endDate || null,
-                            days,
-                            total_price: grandTotal,
-                            message: form.message || '',
-                            status: 'pending_payment',
-                          }).select('id').single();
-                          bookingId = bData?.id || '';
+                          const bRes = await fetch('/api/bookings', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                              listing_id: id,
+                              renter_id: currentUserId || null,
+                              renter_name: form.name,
+                              renter_email: form.email,
+                              renter_phone: form.phone,
+                              start_date: form.startDate || null,
+                              end_date: form.endDate || null,
+                              days,
+                              total_price: grandTotal,
+                              message: form.message || '',
+                            }),
+                          });
+                          const bData = await bRes.json();
+                          bookingId = bData.bookingId || '';
                         }
 
-                        await emailjs.send(EMAILJS_SERVICE, EMAILJS_BOOKING_TEMPLATE, {
-                          gear_title: listing.title, gear_owner: listing.owner_name, gear_price: listing.price,
-                          start_date: form.startDate || 'Not specified', end_date: form.endDate || 'Not specified',
-                          total: form.startDate && form.endDate ? `$${Math.round(listing.price * days * 1.15)}` : 'TBD',
-                          renter_name: form.name, renter_email: form.email, renter_phone: form.phone,
-                          message: form.message || 'No message provided',
-                        }, EMAILJS_PUBLIC_KEY);
+                        if (UUID_RE.test(id) && listing.owner_email) {
+                          await fetch('/api/send-email', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                              type: 'booking_request',
+                              ownerEmail: listing.owner_email,
+                              ownerName: listing.owner_name,
+                              renterName: form.name,
+                              renterEmail: form.email,
+                              renterPhone: form.phone,
+                              gearTitle: listing.title,
+                              gearPrice: listing.price,
+                              startDate: form.startDate || 'Not specified',
+                              endDate: form.endDate || 'Not specified',
+                              total: grandTotal,
+                              message: form.message || '',
+                            }),
+                          });
+                        }
 
-                        track('checkout_started', { title: listing.title, price: listing.price, days, total: grandTotal });
-                        const res = await fetch('/api/checkout', {
-                          method: 'POST',
-                          headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({ gearTitle: listing.title, price: listing.price, days, renterEmail: form.email, stripeAccountId: listing.stripe_account_id || '', deliveryFee, listingId: UUID_RE.test(id) ? id : '', depositAmount: listing.deposit_amount || 0, bookingId }),
-                        });
-                        const data = await res.json();
-                        if (data.error) throw new Error(data.error);
-                        window.location.href = data.url;
+                        track('booking_requested', { title: listing.title, price: listing.price, days, total: grandTotal });
+                        setStep('requested');
                       } catch (err: any) {
                         alert('Error: ' + (err?.text || err?.message || JSON.stringify(err)));
                       } finally {
@@ -463,6 +523,8 @@ export default function GearDetailClient({ id }: { id: string }) {
           </div>
         </div>
       </div>
+
+      <Footer />
     </div>
   );
 }
