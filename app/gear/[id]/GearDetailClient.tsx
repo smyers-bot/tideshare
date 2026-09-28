@@ -263,7 +263,7 @@ export default function GearDetailClient({ id }: { id: string }) {
                           const res = await fetch('/api/reviews', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ listing_id: id, reviewer_id: currentUserId, reviewer_name: currentUserName, rating: reviewForm.rating, comment: reviewForm.comment }),
+                            body: JSON.stringify({ listing_id: id, rating: reviewForm.rating, comment: reviewForm.comment }),
                           });
                           const data = await res.json();
                           if (data.error) throw new Error(data.error);
@@ -466,7 +466,6 @@ export default function GearDetailClient({ id }: { id: string }) {
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({
                               listing_id: id,
-                              renter_id: currentUserId || null,
                               renter_name: form.name,
                               renter_email: form.email,
                               renter_phone: form.phone,

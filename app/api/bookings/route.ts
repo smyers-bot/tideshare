@@ -5,11 +5,17 @@ import { createClient } from '@/app/lib/supabase/server';
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { listing_id, renter_id, renter_name, renter_email, renter_phone, start_date, end_date, days, total_price, message } = body;
+    const { listing_id, renter_name, renter_email, renter_phone, start_date, end_date, days, total_price, message } = body;
 
     if (!listing_id || !renter_name || !renter_email) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
+
+    // renter_id comes from the authenticated session, never the request body — otherwise
+    // any caller could create a booking that impersonates another user's renter_id.
+    const sessionClient = await createClient();
+    const { data: { user } } = await sessionClient.auth.getUser();
+    const renter_id = user?.id || null;
 
     const supabase = createAdminClient();
     const baseRow = {

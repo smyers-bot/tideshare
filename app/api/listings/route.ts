@@ -6,7 +6,7 @@ export async function GET() {
 
   const { data: listings, error } = await admin
     .from('listings')
-    .select('*')
+    .select('id, title, category, location, price, description, availability, photo_url, owner_name, emoji, deposit_amount, fulfillment_type, delivery_radius, delivery_fee, is_active, created_at')
     .eq('is_approved', true)
     .eq('is_active', true)
     .order('created_at', { ascending: false });

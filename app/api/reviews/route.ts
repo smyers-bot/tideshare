@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/app/lib/supabase/admin';
+import { createClient } from '@/app/lib/supabase/server';
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -20,10 +21,19 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const { listing_id, reviewer_name, reviewer_id, rating, comment } = await req.json();
-    if (!listing_id || !reviewer_name || !rating || !reviewer_id) {
+    const { listing_id, rating, comment } = await req.json();
+    if (!listing_id || !rating) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
+
+    // Reviewer identity comes from the authenticated session, never the request body —
+    // otherwise any caller could post a review under someone else's reviewer_id.
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const reviewer_id = user.id;
+    const reviewer_name = user.user_metadata?.full_name || user.email || 'Anonymous';
 
     const admin = createAdminClient();
 
