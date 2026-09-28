@@ -48,6 +48,7 @@ export async function POST(req: NextRequest) {
       payment_intent_data: {
         capture_method: 'manual',
       },
+      metadata: { booking_id: bookingId, type: 'deposit_hold' },
       success_url: `${origin}/booking-success?${successParams.toString()}`,
       cancel_url: `${origin}/booking-success?listing_id=${listingId}&booking_id=${bookingId}`,
     });

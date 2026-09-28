@@ -7,16 +7,22 @@ export async function POST(req: NextRequest) {
     const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
     const supabase = await createClient();
 
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
     const { bookingId } = await req.json();
     if (!bookingId) return NextResponse.json({ error: 'Missing bookingId' }, { status: 400 });
 
     const { data: booking } = await supabase
       .from('bookings')
-      .select('*')
+      .select('*, listing:listings(user_id)')
       .eq('id', bookingId)
       .single();
 
     if (!booking) return NextResponse.json({ error: 'Booking not found' }, { status: 404 });
+    if (booking.listing?.user_id !== user.id && booking.renter_id !== user.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+    }
 
     const isPaid = booking.status === 'paid' || booking.status === 'confirmed';
 
