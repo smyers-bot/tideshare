@@ -140,7 +140,7 @@ export default function GearDetailClient({ id }: { id: string }) {
       <NavBar />
 
       <div style={{ maxWidth: 900, margin: '0 auto', padding: '32px 24px' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: 40, alignItems: 'start' }}>
+        <div className="gear-detail-grid">
 
           {/* Left — listing detail */}
           <div>
@@ -298,7 +298,7 @@ export default function GearDetailClient({ id }: { id: string }) {
           </div>
 
           {/* Right — booking card */}
-          <div style={{ position: 'sticky', top: 80 }}>
+          <div className="gear-detail-sticky">
             <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, padding: 24 }}>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginBottom: 20 }}>
                 <span style={{ fontSize: 30, fontWeight: 800, color: 'var(--ocean)' }}>${listing.price}</span>
@@ -307,7 +307,7 @@ export default function GearDetailClient({ id }: { id: string }) {
 
               {step === 'detail' && (
                 <>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: dateError ? 6 : 14 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 10, marginBottom: dateError ? 6 : 14 }}>
                     <div>
                       <label style={labelStyle}>Start date</label>
                       <input style={{ ...inputStyle, borderColor: dateError ? '#ef4444' : undefined }} type="date" value={form.startDate}

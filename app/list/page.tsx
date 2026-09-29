@@ -160,7 +160,7 @@ export default function ListPage() {
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 16 }}>
             <div>
               <label htmlFor="owner-name" style={labelStyle}>Your name</label>
               <input id="owner-name" style={inputStyle} placeholder="Your first name" value={form.name} onChange={e => set('name', e.target.value)} />
@@ -193,7 +193,7 @@ export default function ListPage() {
             )}
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 16 }}>
             <div>
               <label htmlFor="gear-category" style={labelStyle}>Category</label>
               <select id="gear-category" style={inputStyle} value={form.category} onChange={e => set('category', e.target.value)}>
@@ -222,7 +222,7 @@ export default function ListPage() {
               ))}
             </div>
             {form.fulfillment === 'delivery' && (
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 12 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 12, marginTop: 12 }}>
                 <div>
                   <label htmlFor="delivery-radius" style={labelStyle}>Max delivery radius (miles)</label>
                   <input id="delivery-radius" style={inputStyle} type="number" placeholder="10" value={form.deliveryRadius} onChange={e => set('deliveryRadius', e.target.value)} />

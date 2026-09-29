@@ -203,7 +203,7 @@ export default function EditListingPage() {
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 16 }}>
             <div>
               <label style={labelStyle}>Your name</label>
               <input style={inputStyle} value={form.name} onChange={e => set('name', e.target.value)} />
@@ -224,7 +224,7 @@ export default function EditListingPage() {
             <input style={inputStyle} value={form.title} onChange={e => set('title', e.target.value)} />
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 16 }}>
             <div>
               <label style={labelStyle}>Category</label>
               <select style={inputStyle} value={form.category} onChange={e => set('category', e.target.value)}>
@@ -253,7 +253,7 @@ export default function EditListingPage() {
               ))}
             </div>
             {form.fulfillment === 'delivery' && (
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 12 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 12, marginTop: 12 }}>
                 <div>
                   <label style={labelStyle}>Max delivery radius (miles)</label>
                   <input style={inputStyle} type="number" value={form.deliveryRadius} onChange={e => set('deliveryRadius', e.target.value)} />

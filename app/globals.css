@@ -56,3 +56,25 @@ body {
   -webkit-font-smoothing: antialiased;
   margin: 0;
 }
+
+.gear-detail-grid {
+  display: grid;
+  grid-template-columns: 1fr 380px;
+  gap: 40px;
+  align-items: start;
+}
+
+.gear-detail-sticky {
+  position: sticky;
+  top: 80px;
+}
+
+@media (max-width: 760px) {
+  .gear-detail-grid {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+  .gear-detail-sticky {
+    position: static;
+  }
+}
