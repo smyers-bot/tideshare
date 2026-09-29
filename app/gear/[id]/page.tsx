@@ -28,7 +28,7 @@ async function getListing(id: string) {
   if (!UUID_RE.test(id)) return null;
   try {
     const supabase = await createClient();
-    const { data } = await supabase.from('listings').select('title, location, price, category, description').eq('id', id).single();
+    const { data } = await supabase.from('listings').select('title, location, price, category, description, photo_url').eq('id', id).single();
     return data;
   } catch {
     return null;
@@ -42,6 +42,8 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 
   const title = `Rent ${listing.title} in ${listing.location} — $${listing.price}/day | TideShare`;
   const description = `${listing.description} Rent locally in ${listing.location}, SC from a real person. Better prices than shops — book on TideShare.`;
+  const photoUrl = (listing as any).photo_url;
+  const images = photoUrl ? [{ url: photoUrl, width: 1200, height: 900, alt: listing.title }] : undefined;
 
   return {
     title,
@@ -52,6 +54,13 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
       url: `https://tideshare.app/gear/${id}`,
       siteName: 'TideShare',
       type: 'website',
+      images,
+    },
+    twitter: {
+      card: images ? 'summary_large_image' : 'summary',
+      title,
+      description,
+      images: photoUrl ? [photoUrl] : undefined,
     },
   };
 }

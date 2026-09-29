@@ -3,9 +3,24 @@ import Link from 'next/link';
 import NavBar from '@/app/components/NavBar';
 import Footer from '@/app/components/Footer';
 
+const TITLE = 'List Your Gear & Earn | TideShare Charleston';
+const DESCRIPTION = 'Turn idle beach gear into income. List your surfboard, kayak, paddleboard, golf clubs or bikes on TideShare and earn $75–$210/weekend renting to Charleston visitors. Free to list — 15% fee only when you earn.';
+
 export const metadata: Metadata = {
-  title: 'List Your Gear & Earn | TideShare Charleston',
-  description: 'Turn idle beach gear into income. List your surfboard, kayak, paddleboard, golf clubs or bikes on TideShare and earn $75–$210/weekend renting to Charleston visitors. Free to list — 15% fee only when you earn.',
+  title: TITLE,
+  description: DESCRIPTION,
+  openGraph: {
+    title: TITLE,
+    description: DESCRIPTION,
+    url: 'https://tideshare.app/owners',
+    siteName: 'TideShare',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: TITLE,
+    description: DESCRIPTION,
+  },
 };
 
 const GEAR_EXAMPLES = [
