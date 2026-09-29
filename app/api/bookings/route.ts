@@ -18,8 +18,9 @@ export async function POST(req: NextRequest) {
     const renter_id = user?.id || null;
 
     const supabase = createAdminClient();
-    const baseRow = {
+    const { data, error } = await supabase.from('bookings').insert({
       listing_id,
+      renter_id,
       renter_name,
       renter_email,
       renter_phone: renter_phone || '',
@@ -29,14 +30,7 @@ export async function POST(req: NextRequest) {
       total_price: total_price || 0,
       message: message || '',
       status: 'pending_approval',
-    };
-
-    let { data, error } = await supabase.from('bookings').insert({ ...baseRow, renter_id: renter_id || null }).select('id').single();
-
-    // renter_id column may not exist yet in the DB — fall back so booking creation never breaks.
-    if (error?.message?.includes("renter_id")) {
-      ({ data, error } = await supabase.from('bookings').insert(baseRow).select('id').single());
-    }
+    }).select('id').single();
 
     if (error || !data) {
       console.error('Booking insert error:', error?.message);
