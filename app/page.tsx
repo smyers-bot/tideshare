@@ -6,7 +6,7 @@ import { createClient } from '@/app/lib/supabase/server';
 
 export const metadata: Metadata = {
   title: 'TideShare — Rent Beach & Outdoor Gear in Charleston SC',
-  description: 'Rent surfboards, kayaks, paddleboards, bikes, golf clubs and beach chairs from locals in Charleston, Isle of Palms, Folly Beach, Kiawah Island and Sullivan\'s Island. Better prices than shops.',
+  description: 'Rent surfboards, kayaks, paddleboards, bikes and golf clubs from Charleston locals. Better prices than shops — Folly Beach, Isle of Palms, Kiawah Island.',
 };
 
 const CATEGORIES = [

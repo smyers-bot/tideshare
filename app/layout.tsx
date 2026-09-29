@@ -5,7 +5,7 @@ import './globals.css';
 export const metadata: Metadata = {
   metadataBase: new URL('https://tideshare.app'),
   title: 'TideShare — Rent Beach & Outdoor Gear in Charleston SC',
-  description: 'Rent surfboards, kayaks, paddleboards, bikes, golf clubs and beach gear from locals in Charleston, Isle of Palms, Folly Beach, Kiawah Island and Sullivan\'s Island. Better prices than shops.',
+  description: 'Rent surfboards, kayaks, paddleboards, bikes and golf clubs from Charleston locals. Better prices than shops — Folly Beach, Isle of Palms, Kiawah Island.',
   keywords: 'surfboard rental Charleston SC, kayak rental Isle of Palms, paddleboard rental Folly Beach, beach gear rental Charleston, bike rental Sullivan\'s Island, golf club rental Kiawah Island',
   openGraph: {
     title: 'TideShare — Rent Beach & Outdoor Gear in Charleston SC',
