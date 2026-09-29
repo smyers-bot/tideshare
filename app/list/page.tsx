@@ -27,6 +27,9 @@ export default function ListPage() {
   const [depositAmount, setDepositAmount] = useState('');
   const [submitAttempted, setSubmitAttempted] = useState(false);
   const [titleTouched, setTitleTouched] = useState(false);
+  const [categoryTouched, setCategoryTouched] = useState(false);
+  const [locationTouched, setLocationTouched] = useState(false);
+  const [priceTouched, setPriceTouched] = useState(false);
   const [form, setForm] = useState({
     name: '', email: '', phone: '',
     title: '', category: '', location: '', price: '',
@@ -156,7 +159,18 @@ export default function ListPage() {
         </div>
 
         <h1 style={{ fontSize: 28, fontWeight: 800, marginBottom: 8, letterSpacing: '-0.3px' }}>List your gear</h1>
-        <p style={{ color: 'var(--text-muted)', marginBottom: 32, fontSize: 15 }}>Takes 5 minutes. Your listing goes live immediately.</p>
+        <p style={{ color: 'var(--text-muted)', marginBottom: 20, fontSize: 15 }}>Takes 5 minutes. Your listing goes live immediately.</p>
+
+        <button
+          type="button"
+          onClick={() => document.getElementById('photo-upload-section')?.scrollIntoView({ behavior: 'smooth', block: 'center' })}
+          style={{ width: '100%', textAlign: 'left', display: 'flex', gap: 14, alignItems: 'center', background: 'var(--surface)', border: '1px dashed var(--ocean)', borderRadius: 12, padding: 16, marginBottom: 32, cursor: 'pointer', fontFamily: 'inherit' }}>
+          <span style={{ fontSize: 26 }}>✨</span>
+          <span>
+            <span style={{ display: 'block', fontWeight: 700, fontSize: 14, marginBottom: 2 }}>Fastest way to list: snap a photo first</span>
+            <span style={{ display: 'block', fontSize: 13, color: 'var(--text-muted)' }}>We'll write the title, category, and description for you — jump to photo upload ↓</span>
+          </span>
+        </button>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
 
@@ -196,17 +210,33 @@ export default function ListPage() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 16 }}>
             <div>
               <label htmlFor="gear-category" style={labelStyle}>Category</label>
-              <select id="gear-category" style={inputStyle} value={form.category} onChange={e => set('category', e.target.value)}>
+              <select
+                id="gear-category"
+                style={{ ...inputStyle, borderColor: (categoryTouched || submitAttempted) && !form.category ? '#ef4444' : undefined }}
+                value={form.category}
+                onChange={e => set('category', e.target.value)}
+                onBlur={() => setCategoryTouched(true)}>
                 <option value="">Select...</option>
                 {CATEGORIES.map(c => <option key={c}>{c}</option>)}
               </select>
+              {(categoryTouched || submitAttempted) && !form.category && (
+                <p style={{ fontSize: 12, color: '#ef4444', marginTop: 5 }}>Category is required.</p>
+              )}
             </div>
             <div>
               <label htmlFor="gear-location" style={labelStyle}>Your location</label>
-              <select id="gear-location" style={inputStyle} value={form.location} onChange={e => set('location', e.target.value)}>
+              <select
+                id="gear-location"
+                style={{ ...inputStyle, borderColor: (locationTouched || submitAttempted) && !form.location ? '#ef4444' : undefined }}
+                value={form.location}
+                onChange={e => set('location', e.target.value)}
+                onBlur={() => setLocationTouched(true)}>
                 <option value="">Select...</option>
                 {LOCATIONS.map(l => <option key={l}>{l}</option>)}
               </select>
+              {(locationTouched || submitAttempted) && !form.location && (
+                <p style={{ fontSize: 12, color: '#ef4444', marginTop: 5 }}>Location is required.</p>
+              )}
             </div>
           </div>
 
@@ -245,13 +275,17 @@ export default function ListPage() {
               <span style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', fontWeight: 600 }}>$</span>
               <input
                 id="gear-price"
-                style={{ ...inputStyle, paddingLeft: 28, borderColor: priceError ? '#ef4444' : undefined }}
+                style={{ ...inputStyle, paddingLeft: 28, borderColor: priceError || ((priceTouched || submitAttempted) && !form.price) ? '#ef4444' : undefined }}
                 type="number" placeholder="45" min="5" max="500"
                 autoComplete="off"
+                onBlur={() => setPriceTouched(true)}
                 value={form.price} onChange={e => set('price', e.target.value)} />
             </div>
             {priceError && <p style={{ fontSize: 12, color: '#ef4444', marginTop: 5 }}>{priceError}</p>}
-            {!priceError && <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 5 }}>$5 minimum · $500 maximum</p>}
+            {!priceError && (priceTouched || submitAttempted) && !form.price && (
+              <p style={{ fontSize: 12, color: '#ef4444', marginTop: 5 }}>Daily price is required.</p>
+            )}
+            {!priceError && !((priceTouched || submitAttempted) && !form.price) && <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 5 }}>$5 minimum · $500 maximum</p>}
           </div>
 
           <div>
@@ -284,7 +318,7 @@ export default function ListPage() {
             <input id="gear-availability" style={inputStyle} placeholder="Weekends only, or most days May–Sept" value={form.availability} onChange={e => set('availability', e.target.value)} />
           </div>
 
-          <div>
+          <div id="photo-upload-section">
             <label style={labelStyle}>Photo of your gear (optional but recommended)</label>
             <button
               type="button"
@@ -296,7 +330,7 @@ export default function ListPage() {
                 <>
                   <div style={{ fontSize: 32, marginBottom: 8 }}>📷</div>
                   <p style={{ fontSize: 14, color: 'var(--text-muted)', margin: 0 }}>Tap to upload a photo</p>
-                  <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '4px 0 0' }}>JPG or PNG, max 10MB</p>
+                  <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '4px 0 0' }}>A clear photo of your actual gear, in good light — JPG or PNG, max 10MB</p>
                 </>
               )}
             </button>
