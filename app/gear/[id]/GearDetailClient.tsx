@@ -134,6 +134,7 @@ export default function GearDetailClient({ id }: { id: string }) {
   }
 
   const available = listing.is_active !== false;
+  const bookable = listing.bookable !== false;
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg)' }}>
@@ -153,6 +154,7 @@ export default function GearDetailClient({ id }: { id: string }) {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
               <h1 style={{ fontSize: 26, fontWeight: 800, letterSpacing: '-0.3px' }}>{listing.title}</h1>
               {!available && <span style={{ background: 'var(--border)', color: 'var(--text-muted)', fontSize: 12, fontWeight: 700, padding: '4px 12px', borderRadius: 8 }}>Unavailable</span>}
+              {available && !bookable && <span style={{ background: '#FEF3C7', color: '#92400E', fontSize: 12, fontWeight: 700, padding: '4px 12px', borderRadius: 8 }}>Coming soon</span>}
             </div>
             <p style={{ fontSize: 15, color: 'var(--text-muted)', marginBottom: 20 }}>
               📍 {listing.location} {reviews.length > 0
@@ -362,7 +364,7 @@ export default function GearDetailClient({ id }: { id: string }) {
                   )}
                   <button
                     onClick={() => {
-                      if (!available) return;
+                      if (!available || !bookable) return;
                       const today = new Date().toISOString().split('T')[0];
                       if (form.startDate && form.startDate < today) { setDateError('Start date cannot be in the past.'); return; }
                       if (form.startDate && form.endDate && form.endDate < form.startDate) { setDateError('End date must be after start date.'); return; }
@@ -371,9 +373,9 @@ export default function GearDetailClient({ id }: { id: string }) {
                       setStep('book');
                       track('booking_started', { title: listing.title, price: listing.price, location: listing.location });
                     }}
-                    disabled={!available}
-                    style={{ width: '100%', padding: '14px', borderRadius: 8, background: available ? 'var(--ocean)' : 'var(--border)', color: available ? '#fff' : 'var(--text-muted)', fontSize: 15, fontWeight: 700, border: 'none', cursor: available ? 'pointer' : 'not-allowed' }}>
-                    {available ? 'Request to book' : 'Currently unavailable'}
+                    disabled={!available || !bookable}
+                    style={{ width: '100%', padding: '14px', borderRadius: 8, background: (available && bookable) ? 'var(--ocean)' : 'var(--border)', color: (available && bookable) ? '#fff' : 'var(--text-muted)', fontSize: 15, fontWeight: 700, border: 'none', cursor: (available && bookable) ? 'pointer' : 'not-allowed' }}>
+                    {!available ? 'Currently unavailable' : !bookable ? "This gear isn't available yet — check back soon" : 'Request to book'}
                   </button>
                   <p style={{ fontSize: 12, color: 'var(--text-muted)', textAlign: 'center', marginTop: 10 }}>
                     No charge until {listing.owner_name} confirms

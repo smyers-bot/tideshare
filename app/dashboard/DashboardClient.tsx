@@ -13,6 +13,7 @@ type Listing = {
   emoji: string;
   is_approved: boolean;
   is_active: boolean;
+  bookable: boolean;
   created_at: string;
   stripe_account_id: string;
 };
@@ -91,6 +92,13 @@ export default function DashboardClient({ user, listings: initialListings, booki
     setToggling(id);
     await supabase.from('listings').update({ is_active: !current }).eq('id', id);
     setListings(l => l.map(x => x.id === id ? { ...x, is_active: !current } : x));
+    setToggling(null);
+  };
+
+  const toggleBookable = async (id: string, current: boolean) => {
+    setToggling(id + '-bookable');
+    await supabase.from('listings').update({ bookable: !current }).eq('id', id);
+    setListings(l => l.map(x => x.id === id ? { ...x, bookable: !current } : x));
     setToggling(null);
   };
 
@@ -278,7 +286,8 @@ export default function DashboardClient({ user, listings: initialListings, booki
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 3 }}>
                     <span style={{ fontWeight: 700, fontSize: 15 }}>{listing.title}</span>
                     {!listing.is_approved && pill('Pending approval', '#92400E', '#FEF3C7')}
-                    {listing.is_approved && listing.is_active && pill('Live', '#1A7F4B', '#E6F4ED')}
+                    {listing.is_approved && listing.is_active && listing.bookable && pill('Live', '#1A7F4B', '#E6F4ED')}
+                    {listing.is_approved && listing.is_active && !listing.bookable && pill('Coming soon', '#92400E', '#FEF3C7')}
                     {listing.is_approved && !listing.is_active && pill('Paused', '#5A7A96', 'var(--surface2)')}
                   </div>
                   <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>
@@ -296,6 +305,14 @@ export default function DashboardClient({ user, listings: initialListings, booki
                       disabled={toggling === listing.id}
                       style={{ fontSize: 13, padding: '6px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 500 }}>
                       {toggling === listing.id ? '...' : listing.is_active ? 'Pause' : 'Activate'}
+                    </button>
+                  )}
+                  {listing.is_approved && listing.is_active && (
+                    <button
+                      onClick={() => toggleBookable(listing.id, listing.bookable)}
+                      disabled={toggling === listing.id + '-bookable'}
+                      style={{ fontSize: 13, padding: '6px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 500 }}>
+                      {toggling === listing.id + '-bookable' ? '...' : listing.bookable ? 'Mark coming soon' : 'Mark bookable'}
                     </button>
                   )}
                   <button

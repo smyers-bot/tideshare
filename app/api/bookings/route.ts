@@ -18,6 +18,21 @@ export async function POST(req: NextRequest) {
     const renter_id = user?.id || null;
 
     const supabase = createAdminClient();
+
+    // Server-side gate: a hidden/disabled booking button is not enforcement.
+    const { data: listing } = await supabase
+      .from('listings')
+      .select('bookable, is_active')
+      .eq('id', listing_id)
+      .single();
+
+    if (!listing || listing.is_active === false) {
+      return NextResponse.json({ error: 'This listing is not available.' }, { status: 404 });
+    }
+    if (listing.bookable === false) {
+      return NextResponse.json({ error: "This gear isn't available to book yet." }, { status: 403 });
+    }
+
     const { data, error } = await supabase.from('bookings').insert({
       listing_id,
       renter_id,

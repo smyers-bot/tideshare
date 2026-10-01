@@ -107,7 +107,9 @@ export default function BrowsePage() {
                         <span style={{ fontSize: 18, fontWeight: 800, color: 'var(--ocean)' }}>${listing.price}</span>
                         <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>/day</span>
                       </div>
-                      {listing.reviews_count > 0
+                      {listing.bookable === false
+                        ? <span style={{ fontSize: 12, fontWeight: 600, color: '#92400E', background: '#FEF3C7', padding: '2px 8px', borderRadius: 6 }}>Coming soon</span>
+                        : listing.reviews_count > 0
                         ? <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>⭐ {listing.rating} ({listing.reviews_count})</span>
                         : <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--ocean)', background: 'var(--ocean-light)', padding: '2px 8px', borderRadius: 6 }}>New</span>}
                     </div>
