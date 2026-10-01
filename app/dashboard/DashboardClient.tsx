@@ -435,6 +435,15 @@ export default function DashboardClient({ user, listings: initialListings, booki
                     {booking.deposit_status === 'claimed' && (
                       <span style={{ fontSize: 12, color: '#991B1B', fontWeight: 600 }}>✓ Claimed — transferred to you</span>
                     )}
+                    {booking.deposit_status === 'pending_auth' && (
+                      <span style={{ fontSize: 12, color: '#92400E', background: '#FEF3C7', padding: '2px 8px', borderRadius: 8, fontWeight: 700 }}>⏳ Waiting on renter to authorize hold</span>
+                    )}
+                    {booking.deposit_status === 'failed' && (
+                      <span style={{ fontSize: 12, color: '#991B1B', background: '#FEF2F2', padding: '2px 8px', borderRadius: 8, fontWeight: 700 }}>⚠️ Hold attempt failed — renter needs to retry</span>
+                    )}
+                    {booking.deposit_status === 'expired' && (
+                      <span style={{ fontSize: 12, color: '#6B7280', background: '#F3F4F6', padding: '2px 8px', borderRadius: 8, fontWeight: 700 }}>Hold auto-expired after 7 days (no action taken)</span>
+                    )}
                   </div>
                 )}
               </div>

@@ -50,6 +50,13 @@ export async function POST(req: NextRequest) {
       mode: 'payment',
       success_url: `${origin}/booking-success?${successParams.toString()}`,
       cancel_url: `${origin}/browse`,
+      ...(depositAmount > 0 ? {
+        custom_text: {
+          submit: {
+            message: `After this payment, you'll be asked to authorize a separate $${depositAmount} security deposit hold on your card — not a charge. It's released after a clean return, or auto-expires in 7 days.`,
+          },
+        },
+      } : {}),
       payment_intent_data: {
         transfer_data: { destination: stripeAccountId, amount: ownerAmount },
         // Save the card so we can auto-authorize the deposit after payment

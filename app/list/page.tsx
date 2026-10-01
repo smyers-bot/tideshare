@@ -25,6 +25,8 @@ export default function ListPage() {
   const [userEmail, setUserEmail] = useState('');
   const [emailVerified, setEmailVerified] = useState(true);
   const [depositAmount, setDepositAmount] = useState('');
+  const [depositTouched, setDepositTouched] = useState(false);
+  const [replacementValue, setReplacementValue] = useState('');
   const [submitAttempted, setSubmitAttempted] = useState(false);
   const [titleTouched, setTitleTouched] = useState(false);
   const [categoryTouched, setCategoryTouched] = useState(false);
@@ -289,6 +291,28 @@ export default function ListPage() {
           </div>
 
           <div>
+            <label htmlFor="replacement-value" style={labelStyle}>What would it cost to replace this gear? (optional)</label>
+            <div style={{ position: 'relative' }}>
+              <span style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', fontWeight: 600 }}>$</span>
+              <input
+                id="replacement-value"
+                style={{ ...inputStyle, paddingLeft: 28 }}
+                type="text" inputMode="numeric" pattern="[0-9]*" placeholder="500"
+                autoComplete="off"
+                value={replacementValue}
+                onChange={e => {
+                  const raw = e.target.value.replace(/[^0-9]/g, '');
+                  setReplacementValue(raw);
+                  if (!depositTouched && raw) {
+                    const suggested = Math.min(2000, Math.round(parseInt(raw) * 0.4));
+                    setDepositAmount(String(suggested));
+                  }
+                }} />
+            </div>
+            <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 5 }}>Used only to suggest a deposit amount below — not shown to renters.</p>
+          </div>
+
+          <div>
             <label htmlFor="deposit-security-x" style={labelStyle}>Security deposit (optional)</label>
             <div style={{ position: 'relative' }}>
               <span style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', fontWeight: 600 }}>$</span>
@@ -300,10 +324,14 @@ export default function ListPage() {
                 onChange={e => {
                   const raw = e.target.value.replace(/[^0-9]/g, '');
                   setDepositAmount(raw);
+                  setDepositTouched(true);
                 }} />
             </div>
             {depositError && <p style={{ fontSize: 12, color: '#ef4444', marginTop: 5 }}>{depositError}</p>}
-            <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 5 }}>A card authorization hold — not a charge — placed on the renter's card after they pay. After return, release it from your dashboard (hold is voided, renter never charged) or claim it if gear is damaged. Holds auto-expire after 7 days if you take no action. Max $2,000.</p>
+            {!depositError && depositTouched === false && depositAmount && (
+              <p style={{ fontSize: 12, color: 'var(--ocean)', marginTop: 5 }}>Suggested at 40% of replacement value — change it to whatever you'd want.</p>
+            )}
+            <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 5 }}>A card authorization hold — not a charge — placed on the renter's card after they pay. After return, release it from your dashboard (hold is voided, renter never charged) or claim it if gear is damaged. Holds auto-expire after 7 days if you take no action — including mid-rental, if the rental runs longer than 7 days. Max $2,000.</p>
           </div>
 
           <div>
@@ -381,7 +409,7 @@ export default function ListPage() {
                 }
 
                 const stripeAccountId = user.user_metadata?.stripe_account_id || '';
-                const { error: dbError } = await supabase.from('listings').insert({
+                const { data: insertedListing, error: dbError } = await supabase.from('listings').insert({
                   user_id: user.id,
                   stripe_account_id: stripeAccountId || undefined,
                   title: form.title,
@@ -400,7 +428,7 @@ export default function ListPage() {
                   fulfillment_type: form.fulfillment,
                   delivery_radius: form.fulfillment === 'delivery' ? parseInt(form.deliveryRadius) || 0 : 0,
                   delivery_fee: form.fulfillment === 'delivery' ? parseFloat(form.deliveryFee) || 0 : 0,
-                });
+                }).select('id').single();
                 if (dbError) throw new Error(dbError.message);
 
                 await fetch('/api/send-email', {
@@ -417,6 +445,7 @@ export default function ListPage() {
                     price: form.price,
                     description: form.description || '',
                     photoUrl: photoUrl || '',
+                    listingId: insertedListing?.id || '',
                   }),
                 });
 

@@ -24,6 +24,27 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid signature' }, { status: 400 });
   }
 
+  const supabase = createAdminClient();
+
+  // A manual-capture PaymentIntent gets canceled either because we voided it
+  // ourselves (release/skip — deposit_status is already updated synchronously
+  // in that request) or because Stripe auto-expired an untouched hold after
+  // ~7 days. Only the second case needs this handler to do anything.
+  if (event.type === 'payment_intent.canceled') {
+    const pi = event.data.object as Stripe.PaymentIntent;
+    const { data: booking } = await supabase
+      .from('bookings')
+      .select('id, deposit_status')
+      .eq('deposit_payment_intent_id', pi.id)
+      .single();
+
+    if (booking && booking.deposit_status === 'authorized') {
+      await supabase.from('bookings').update({ deposit_status: 'expired' }).eq('id', booking.id);
+      console.log(`Deposit hold ${pi.id} auto-expired for booking ${booking.id}`);
+    }
+    return NextResponse.json({ received: true });
+  }
+
   if (event.type !== 'checkout.session.completed') {
     return NextResponse.json({ received: true });
   }
@@ -37,8 +58,6 @@ export async function POST(req: NextRequest) {
   if (!bookingId || session.payment_status !== 'paid') {
     return NextResponse.json({ received: true });
   }
-
-  const supabase = createAdminClient();
 
   // Mark the booking paid regardless of whether it also has a deposit — this was
   // previously only done as a side effect of the deposit-hold branch below, so any

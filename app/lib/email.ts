@@ -58,11 +58,12 @@ export async function sendBookingApprovedEmail({
 }
 
 export async function sendNewListingEmail({
-  ownerName, ownerEmail, ownerPhone, title, category, location, price, description, photoUrl,
+  ownerName, ownerEmail, ownerPhone, title, category, location, price, description, photoUrl, listingId,
 }: {
   ownerName: string; ownerEmail: string; ownerPhone: string; title: string;
-  category: string; location: string; price: string; description: string; photoUrl: string;
+  category: string; location: string; price: string; description: string; photoUrl: string; listingId: string;
 }) {
+  const listingUrl = listingId ? `https://www.tideshare.app/gear/${listingId}` : '';
   return resend.emails.send({
     from: FROM,
     to: ADMIN_EMAIL,
@@ -80,6 +81,7 @@ export async function sendNewListingEmail({
         <tr><td style="padding:8px 0;color:#666">Description</td><td style="padding:8px 0">${description || 'None'}</td></tr>
         ${photoUrl ? `<tr><td style="padding:8px 0;color:#666">Photo</td><td style="padding:8px 0"><a href="${photoUrl}">View photo</a></td></tr>` : ''}
       </table>
+      ${listingUrl ? `<p style="margin-top:20px"><a href="${listingUrl}" style="background:#0ea5e9;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:700">View live listing →</a></p>` : ''}
     `,
   });
 }

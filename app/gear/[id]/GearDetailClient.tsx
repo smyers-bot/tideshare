@@ -379,9 +379,16 @@ export default function GearDetailClient({ id }: { id: string }) {
                     No charge until {listing.owner_name} confirms
                   </p>
                   {listing.deposit_amount > 0 ? (
-                    <p style={{ fontSize: 12, color: 'var(--text-muted)', textAlign: 'center', marginTop: 4 }}>
-                      🔒 ${listing.deposit_amount} card hold placed after booking — not a charge. Released by owner after a clean return, or auto-expires in 7 days.
-                    </p>
+                    <>
+                      <p style={{ fontSize: 12, color: 'var(--text-muted)', textAlign: 'center', marginTop: 4 }}>
+                        🔒 ${listing.deposit_amount} card hold placed after booking — not a charge. Released by owner after a clean return, or auto-expires in 7 days.
+                      </p>
+                      {days > 7 && (
+                        <p style={{ fontSize: 12, color: '#92400E', textAlign: 'center', marginTop: 4 }}>
+                          ⚠️ Your rental is longer than 7 days — the deposit hold may expire before you return the gear.
+                        </p>
+                      )}
+                    </>
                   ) : (
                     <p style={{ fontSize: 12, color: 'var(--text-muted)', textAlign: 'center', marginTop: 4 }}>
                       No deposit required

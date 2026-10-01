@@ -67,8 +67,6 @@ function BookingSuccessContent() {
     }
   };
 
-  const skipDeposit = () => setPhase('success');
-
   if (phase === 'loading') {
     return (
       <div style={{ minHeight: '100vh', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -86,7 +84,7 @@ function BookingSuccessContent() {
             <div style={{ fontSize: 64, marginBottom: 20 }}>✅</div>
             <h1 style={{ fontSize: 26, fontWeight: 800, marginBottom: 12 }}>Rental paid!</h1>
             <p style={{ fontSize: 15, color: 'var(--text-muted)', lineHeight: 1.7, marginBottom: 28 }}>
-              One more step — the owner requires a security deposit hold on your card.
+              One last required step — the owner requires a security deposit hold on your card before the booking is confirmed.
             </p>
 
             <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 24, marginBottom: 24, textAlign: 'left' }}>
@@ -95,7 +93,7 @@ function BookingSuccessContent() {
                 <div>
                   <p style={{ fontWeight: 700, fontSize: 15, marginBottom: 6 }}>Security deposit — authorization hold only</p>
                   <p style={{ fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.6 }}>
-                    This places a temporary hold on your card. <strong>No money is charged.</strong> The hold is voided automatically when the owner confirms gear was returned undamaged. It's only captured if damage is reported.
+                    This places a temporary hold on your card. <strong>No money is charged.</strong> The hold is voided automatically when the owner confirms gear was returned undamaged, or auto-expires after 7 days. It's only captured if damage is reported.
                   </p>
                 </div>
               </div>
@@ -107,11 +105,9 @@ function BookingSuccessContent() {
               style={{ width: '100%', padding: '14px', borderRadius: 8, background: 'var(--ocean)', color: '#fff', fontSize: 15, fontWeight: 700, border: 'none', cursor: 'pointer', marginBottom: 12 }}>
               {authorizing ? 'Redirecting to Stripe...' : 'Authorize security hold →'}
             </button>
-            <button
-              onClick={skipDeposit}
-              style={{ width: '100%', padding: '12px', borderRadius: 8, background: 'transparent', color: 'var(--text-muted)', fontSize: 14, border: '1px solid var(--border)', cursor: 'pointer' }}>
-              Skip for now
-            </button>
+            <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>
+              If your card is declined, you'll be brought back here to try a different card. This step can't be skipped — it's required by the owner for this rental.
+            </p>
           </div>
         </div>
       </div>
